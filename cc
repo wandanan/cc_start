@@ -69,7 +69,7 @@ prepare_config() {
 
     # 使用选定模型的配置
     cp "$model_config" "$USER_SETTINGS"
-
+    echo "已切换配置到: $USER_SETTINGS"
     return 0
 }
 
