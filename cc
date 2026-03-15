@@ -114,23 +114,22 @@ add_model() {
         return 1
     fi
 
-    read -p "Base URL (如 https://api.openai.com/v1): " base_url
+    read -p "Base URL (如 https://api.kimi.com/coding/): " base_url
     if [[ -z "$base_url" ]]; then
         echo "Base URL 不能为空"
         return 1
     fi
 
-    # 创建配置文件
-    local model_id="$alias"
+    # 创建配置文件 - 使用用户输入的名称作为模型ID
     cat > "$CONFIG_DIR/${alias}.json" << EOF
 {
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "$api_key",
     "ANTHROPIC_BASE_URL": "$base_url",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "$model_id",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "$model_id",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "$model_id",
-    "ANTHROPIC_MODEL": "$model_id"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "$name",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "$name",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "$name",
+    "ANTHROPIC_MODEL": "$name"
   },
   "includeCoAuthoredBy": false
 }
