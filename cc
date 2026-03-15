@@ -105,7 +105,7 @@ add_model() {
         [[ "$confirm" != "y" && "$confirm" != "Y" ]] && return 1
     fi
 
-    read -p "Claude Code 界面显示使用的模型名 (如 kimi-k2.5): " name
+    read -p "Claude Code 使用的模型名ID (如 kimi-k2.5): " name
     [[ -z "$name" ]] && name="$alias"
 
     read -p "API Key: " api_key
