@@ -59,7 +59,11 @@ if "%SKIP_SCRIPTS%"=="1" (
         pause
         exit /b 1
     )
+    :: Create ccs alias to avoid conflict with C compiler (and for consistency)
+    copy /Y "%~dp0cc" "%INSTALL_DIR%\ccs" >nul
+    copy /Y "%~dp0cc.cmd" "%INSTALL_DIR%\ccs.cmd" >nul
     echo [OK] Scripts installed
+    echo [OK] Created alias 'ccs' for consistency
 )
 
 :: Create config directory
@@ -126,13 +130,15 @@ echo    Installation Complete!
 echo ===================================
 echo.
 echo Usage:
-echo   cc              - Interactive model selection
-echo   cc ^<model^>     - Start specified model
-echo   cc add          - Add new model config
+echo   ccs              - Interactive model selection
+echo   ccs ^<model^>     - Start specified model
+echo   ccs add          - Add new model config
+echo   ccs remove ^<model^> - Remove model config
+echo   ccs reset        - Reset all configs
 echo.
 echo Config files location:
 echo   %%USERPROFILE%%\.claude\models\
 echo.
-echo [IMPORTANT] Please reopen terminal, then run "cc add" to add model config
+echo [IMPORTANT] Please reopen terminal, then run "ccs add" to add model config
 echo.
 pause
