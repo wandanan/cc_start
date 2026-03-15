@@ -1,101 +1,104 @@
 @echo off
 setlocal EnableDelayedExpansion
 
-chcp 65001 >nul
-
 echo.
 echo ===================================
-echo    CC Start ��װ����
+echo    CC Start Installer
 echo ===================================
 echo.
 
-:: ����Ƿ��� cc �ļ��ڵ�ǰĿ¼
+:: Check if cc file exists in current directory
 if not exist "%~dp0cc" (
-    echo [����] δ�ҵ� cc �ű��ļ�
-    echo ��ȷ�� install.bat �� cc �ļ���ͬһĿ¼
+    echo [ERROR] cc script not found
+    echo Please ensure install.bat and cc are in the same directory
     pause
     exit /b 1
 )
 
-:: ���ð�װĿ¼
+:: Set installation directory
 set "INSTALL_DIR=%USERPROFILE%\.local\bin"
 
-echo ��װĿ¼: %INSTALL_DIR%
+echo Install directory: %INSTALL_DIR%
 if not exist "%INSTALL_DIR%" (
     mkdir "%INSTALL_DIR%" 2>nul
     if errorlevel 1 (
-        echo [����] �޷�������װĿ¼
+        echo [ERROR] Failed to create install directory
         pause
         exit /b 1
     )
 )
 
-:: ����Ƿ��Ѱ�װ
+:: Check if already installed
+set "SKIP_SCRIPTS=0"
 if exist "%INSTALL_DIR%\cc.cmd" (
     echo.
-    echo [��ʾ] CC Start �Ѱ�װ
-    set /p confirm="�Ƿ񸲸�? (y/N): "
-    if /i not "!confirm!=="y" (
-        echo ȡ����װ
-        pause
-        exit /b 0
+    echo [INFO] CC Start is already installed
+    set /p confirm="Overwrite scripts? (y/N): "
+    if /i not "!confirm!"=="y" (
+        echo [INFO] Keeping existing scripts
+        set "SKIP_SCRIPTS=1"
     )
 )
 
-:: ���ƽű�
-echo.
-echo ���ڸ����ļ�...
-copy /Y "%~dp0cc" "%INSTALL_DIR%\cc" >nul
-if errorlevel 1 (
-    echo [����] ���� cc ʧ��
-    pause
-    exit /b 1
+:: Copy scripts
+if "%SKIP_SCRIPTS%"=="1" (
+    echo.
+    echo [SKIP] Script copy skipped
+) else (
+    echo.
+    echo Copying files...
+    copy /Y "%~dp0cc" "%INSTALL_DIR%\cc" >nul
+    if errorlevel 1 (
+        echo [ERROR] Failed to copy cc
+        pause
+        exit /b 1
+    )
+    copy /Y "%~dp0cc.cmd" "%INSTALL_DIR%\cc.cmd" >nul
+    if errorlevel 1 (
+        echo [ERROR] Failed to copy cc.cmd
+        pause
+        exit /b 1
+    )
+    echo [OK] Scripts installed
 )
-copy /Y "%~dp0cc.cmd" "%INSTALL_DIR%\cc.cmd" >nul
-if errorlevel 1 (
-    echo [����] ���� cc.cmd ʧ��
-    pause
-    exit /b 1
-)
-echo [OK] �ű��Ѱ�װ
 
-:: ��������Ŀ¼
+:: Create config directory
 if not exist "%USERPROFILE%\.claude\models" (
     mkdir "%USERPROFILE%\.claude\models" 2>nul
 )
-echo [OK] ����Ŀ¼�Ѵ���
+echo [OK] Config directory created
 
-:: ����ģ������
+:: Copy model configs
 echo.
-echo ���ڸ���ģ������...
+echo Copying model configs...
 if exist "%~dp0models" (
     set "CONFIG_DIR=%USERPROFILE%\.claude\models"
     for %%f in ("%~dp0models\*.json") do (
         set "filename=%%~nxf"
         if exist "!CONFIG_DIR!\!filename!" (
             echo.
-            echo [��ʾ] �����ļ��Ѵ���: !filename!
-            set /p overwrite="�Ƿ񸲸�? (y/N): "
-            if /i "!overwrite!=="y" (
+            echo [INFO] Config file exists: !filename!
+            set /p overwrite="Overwrite? (y/N): "
+            if /i "!overwrite!"=="y" (
                 copy /Y "%%f" "!CONFIG_DIR!\" >nul
-                echo [OK] �Ѹ���: !filename!
+                echo [OK] Overwritten: !filename!
             ) else (
-                echo [����] ����ԭ�ļ�: !filename!
+                echo [SKIP] Kept original: !filename!
             )
         ) else (
             copy "%%f" "!CONFIG_DIR!\" >nul
-            echo [OK] �Ѹ���: !filename!
+            echo [OK] Copied: !filename!
         )
     )
 )
 
-:: ��� PATH
+:: Check PATH
 echo.
-echo ��� PATH...
+echo Checking PATH...
 echo %PATH% | find /i "%INSTALL_DIR%" >nul
 if errorlevel 1 (
     echo.
-    echo [��ʾ] �������ӵ��û� PATH...
+    echo [INFO] Adding to user PATH...
 
     for /f "tokens=2*" %%a in ('reg query HKCU\Environment /v Path 2^>nul ^| findstr Path') do set "USER_PATH=%%b"
 
@@ -106,30 +109,30 @@ if errorlevel 1 (
     )
 
     if errorlevel 1 (
-        echo [����] ���� PATH ʧ�ܣ����ֶ�����: %INSTALL_DIR%
+        echo [WARN] Failed to add PATH, please add manually: %INSTALL_DIR%
     ) else (
-        echo [OK] PATH �Ѹ���
+        echo [OK] PATH updated
     )
     echo.
-    echo [��Ҫ] �����´��ն���ʹ�� cc ����
+    echo [IMPORTANT] Please reopen terminal to use cc command
 ) else (
-    echo [OK] PATH ���ͨ��
+    echo [OK] PATH check passed
 )
 
-:: ���
+:: Finish
 echo.
 echo ===================================
-echo    ��װ���!
+echo    Installation Complete!
 echo ===================================
 echo.
-echo ʹ�÷���:
-echo   cc              - ����ʽѡ��ģ��
-echo   cc ^<ģ����^>     - ֱ������ָ��ģ��
-echo   cc add          - ������ģ������
+echo Usage:
+echo   cc              - Interactive model selection
+echo   cc ^<model^>     - Start specified model
+echo   cc add          - Add new model config
 echo.
-echo �����ļ�λ��:
+echo Config files location:
 echo   %%USERPROFILE%%\.claude\models\
 echo.
-echo [��Ҫ] �����´��նˣ�Ȼ������ cc add ��������ģ������
+echo [IMPORTANT] Please reopen terminal, then run "cc add" to add model config
 echo.
 pause

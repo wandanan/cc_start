@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# CC Star 自动安装脚本 (Mac/Linux)
+# CC Start Installer (Mac/Linux)
 
 set -e
 
@@ -9,12 +9,13 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     CC Star 安装程序               ║${NC}"
-echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+echo ""
+echo "==================================="
+echo "   CC Start Installer"
+echo "==================================="
 echo ""
 
-# 检测安装目录
+# Detect install directory
 INSTALL_DIR=""
 
 if [[ -d "$HOME/.local/bin" ]]; then
@@ -22,49 +23,74 @@ if [[ -d "$HOME/.local/bin" ]]; then
 elif [[ -d "/usr/local/bin" ]]; then
     INSTALL_DIR="/usr/local/bin"
 else
-    echo "未找到标准安装目录"
-    read -p "请输入安装目录 (直接回车使用 ~/.local/bin): " custom_dir
+    echo "Standard install directory not found"
+    read -p "Enter install directory (default ~/.local/bin): " custom_dir
     INSTALL_DIR="${custom_dir:-$HOME/.local/bin}"
     mkdir -p "$INSTALL_DIR"
 fi
 
-echo "安装目录: $INSTALL_DIR"
+echo "Install directory: $INSTALL_DIR"
 
-# 检查是否已安装
+# Check if already installed
+SKIP_SCRIPTS=0
 if [[ -f "$INSTALL_DIR/cc" ]]; then
-    echo -e "${YELLOW}⚠️  CC Star 已安装${NC}"
-    read -p "是否覆盖? (y/N): " confirm
+    echo ""
+    echo -e "${YELLOW}[INFO] CC Start is already installed${NC}"
+    read -p "Overwrite scripts? (y/N): " confirm
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        echo "取消安装"
-        exit 0
+        echo "[INFO] Keeping existing scripts"
+        SKIP_SCRIPTS=1
     fi
 fi
 
-# 获取脚本所在目录
+# Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# 复制主脚本
-cp "$SCRIPT_DIR/cc" "$INSTALL_DIR/cc"
-chmod +x "$INSTALL_DIR/cc"
-
-echo -e "${GREEN}✅ 主脚本已安装${NC}"
-
-# 创建模型配置目录
-mkdir -p "$HOME/.claude/models"
-echo -e "${GREEN}✅ 配置目录已创建: ~/.claude/models${NC}"
-
-# 复制示例配置
-if [[ -d "$SCRIPT_DIR/models" ]]; then
-    cp "$SCRIPT_DIR/models"/example-*.json "$HOME/.claude/models/" 2>/dev/null || true
-    echo -e "${GREEN}✅ 示例配置已复制${NC}"
+# Copy main script
+if [[ "$SKIP_SCRIPTS" == "1" ]]; then
+    echo ""
+    echo "[SKIP] Script copy skipped"
+else
+    cp "$SCRIPT_DIR/cc" "$INSTALL_DIR/cc"
+    chmod +x "$INSTALL_DIR/cc"
+    echo -e "${GREEN}[OK] Scripts installed${NC}"
 fi
 
-# 检查 PATH
+# Create config directory
+mkdir -p "$HOME/.claude/models"
+echo "[OK] Config directory created"
+
+# Copy model configs
 echo ""
+echo "Copying model configs..."
+if [[ -d "$SCRIPT_DIR/models" ]]; then
+    for json_file in "$SCRIPT_DIR/models"/*.json; do
+        [[ -f "$json_file" ]] || continue
+        filename=$(basename "$json_file")
+        if [[ -f "$HOME/.claude/models/$filename" ]]; then
+            echo ""
+            echo "[INFO] Config file exists: $filename"
+            read -p "Overwrite? (y/N): " overwrite
+            if [[ "$overwrite" == "y" || "$overwrite" == "Y" ]]; then
+                cp "$json_file" "$HOME/.claude/models/"
+                echo "[OK] Overwritten: $filename"
+            else
+                echo "[SKIP] Kept original: $filename"
+            fi
+        else
+            cp "$json_file" "$HOME/.claude/models/"
+            echo "[OK] Copied: $filename"
+        fi
+    done
+fi
+
+# Check PATH
+echo ""
+echo "Checking PATH..."
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    echo -e "${YELLOW}⚠️  $INSTALL_DIR 不在 PATH 中${NC}"
+    echo -e "${YELLOW}[WARN] $INSTALL_DIR is not in PATH${NC}"
     echo ""
-    echo "请手动添加以下行到你的 shell 配置文件:"
+    echo "Please add the following line to your shell config:"
     echo ""
 
     SHELL_NAME=$(basename "$SHELL")
@@ -77,15 +103,22 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     fi
     echo ""
 else
-    echo -e "${GREEN}✅ PATH 检查通过${NC}"
+    echo -e "${GREEN}[OK] PATH check passed${NC}"
 fi
 
 echo ""
-echo -e "${GREEN}🎉 安装完成!${NC}"
+echo "==================================="
+echo "   Installation Complete!"
+echo "==================================="
 echo ""
-echo "使用方法:"
-echo "  cc              - 交互式选择模型"
-echo "  cc <模型名>     - 直接启动指定模型"
-echo "  cc add          - 添加新模型配置"
+echo "Usage:"
+echo "  cc              - Interactive model selection"
+echo "  cc <model>      - Start specified model"
+echo "  cc add          - Add new model config"
+echo "  cc remove <model> - Remove model config"
+echo "  cc reset        - Reset all configs"
 echo ""
-echo "请编辑 ~/.claude/models/ 下的配置文件，填入你的 API Key"
+echo "Config location:"
+echo "  ~/.claude/models/"
+echo ""
+echo "[IMPORTANT] Run 'cc add' to add model configuration"

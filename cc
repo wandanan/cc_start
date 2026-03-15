@@ -165,6 +165,48 @@ launch_claude() {
     "$CLAUDE_BIN" --settings "$model_config" "$@"
 }
 
+# 删除指定模型
+remove_model() {
+    local model="$1"
+
+    if [[ -z "$model" ]]; then
+        echo ""
+        echo "用法: cc remove <模型名>"
+        echo ""
+        echo "支持的模型:"
+        for key in "${!MODELS[@]}"; do
+            echo "  $key - ${MODEL_DESCS[$key]}"
+        done
+        return 1
+    fi
+
+    local model_config="$CONFIG_DIR/${model}.json"
+
+    if [[ ! -f "$model_config" ]]; then
+        echo ""
+        echo -e "${YELLOW}⚠️  模型 '$model' 不存在${NC}"
+        return 1
+    fi
+
+    echo ""
+    echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║     删除模型配置                   ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+    echo ""
+    echo "模型: $model"
+    echo "配置: $model_config"
+    echo ""
+    read -p "确定要删除吗? (y/N): " confirm
+    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+        echo "取消删除"
+        return 1
+    fi
+
+    rm "$model_config"
+    echo ""
+    echo -e "${GREEN}✅ 模型 '$model' 已删除${NC}"
+}
+
 # 重置所有配置
 reset_models() {
     echo ""
@@ -215,6 +257,12 @@ main() {
         exit $?
     fi
 
+    # 处理 remove 命令
+    if [[ "$1" == "remove" || "$1" == "rm" ]]; then
+        remove_model "$2"
+        exit $?
+    fi
+
     # 显示帮助
     if [[ -z "$1" || "$1" == "-h" || "$1" == "--help" || "$1" == "help" ]]; then
         echo "Claude Code 多模型启动器"
@@ -223,6 +271,7 @@ main() {
         echo "  cc              - 交互式选择模型"
         echo "  cc <模型名>     - 直接启动指定模型"
         echo "  cc add          - 添加新模型配置"
+        echo "  cc remove <模型> - 删除指定模型配置"
         echo "  cc reset        - 重置所有配置"
         echo "  cc -h, --help   - 显示帮助"
         echo ""
