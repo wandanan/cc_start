@@ -85,6 +85,12 @@ MODEL_DESCS["mymodel"]="My Model Name"
 - [Claude Code](https://claude.ai/code) - 安装命令：`curl -fsSL https://claude.ai/install.sh | bash`
 - Git Bash (Windows) 或 Bash (Mac/Linux)
 
+## Star History
+
+如果这个项目对你有帮助，请给个 ⭐ Star！
+
+[![Star History Chart](https://api.star-history.com/svg?repos=yourusername/cc-star&type=Date)](https://star-history.com/#yourusername/cc-star&Date)
+
 ## License
 
 MIT
