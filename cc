@@ -5,10 +5,10 @@
 
 set -e
 
-CONFIG_DIR="/c/Users/10030/.claude/models"
-CLAUDE_BIN="/c/users/10030/.local/bin/claude"
-USER_SETTINGS="/c/Users/10030/.claude/settings.json"
-TEMP_SETTINGS="/c/Users/10030/.claude/.cc-temp-settings.json"
+CONFIG_DIR="$HOME/.claude/models"
+CLAUDE_BIN="$(which claude 2>/dev/null || echo "$HOME/.local/bin/claude")"
+USER_SETTINGS="$HOME/.claude/settings.json"
+TEMP_SETTINGS="$HOME/.claude/.cc-temp-settings.json"
 
 # 自动扫描模型配置文件
 scan_models() {
@@ -159,12 +159,6 @@ launch_claude() {
 main() {
     # 扫描模型配置
     scan_models "$CONFIG_DIR"
-
-    # 处理 add 命令
-    if [[ "$1" == "add" ]]; then
-        add_model
-        exit $?
-    fi
 
     # 显示帮助
     if [[ -z "$1" || "$1" == "-h" || "$1" == "--help" || "$1" == "help" ]]; then

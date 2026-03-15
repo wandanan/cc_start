@@ -10,4 +10,4 @@ if not exist "%BASH%" (
     exit /b 1
 )
 
-"%BASH%" "C:\Users\10030\.local\bin\cc" %*
+"%BASH%" "%USERPROFILE%\.local\bin\cc" %*
