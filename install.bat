@@ -32,7 +32,7 @@ if exist "%INSTALL_DIR%\cc.cmd" (
     echo.
     echo [INFO] CC Start already installed
     set /p confirm="Overwrite? (y/N): "
-    if /i not "!confirm!=="y" (
+    if /i not "!confirm!"=="y" (
         echo Cancelled
         pause
         exit /b 0
