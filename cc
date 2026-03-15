@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Claude Code 多模型启动器
-# 用法: cc [模型名] 或直接输入 cc 进行交互选择
+# 用法: ccs [模型名] 或直接输入 ccs 进行交互选择
 
 set -e
 
@@ -88,11 +88,11 @@ add_model() {
     echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
     echo ""
     echo "说明:"
-    echo "  • 启动命令名称: 用于输入 cc <名称> 启动模型"
+    echo "  • 启动命令名称: 用于输入 ccs <名称> 启动模型"
     echo "  • Claude Code 界面显示使用的模型名: 如 kimi-k2.5"
     echo ""
 
-    read -p "启动命令名称 (如 kimi，则使用 cc kimi 启动): " alias
+    read -p "启动命令名称 (如 kimi，则使用 ccs kimi 启动): " alias
     if [[ -z "$alias" ]]; then
         echo "别名不能为空"
         return 1
@@ -171,7 +171,7 @@ remove_model() {
 
     if [[ -z "$model" ]]; then
         echo ""
-        echo "用法: cc remove <模型名>"
+        echo "用法: ccs remove <模型名>"
         echo ""
         echo "支持的模型:"
         for key in "${!MODELS[@]}"; do
@@ -237,7 +237,7 @@ reset_models() {
     echo ""
     echo -e "${GREEN}✅ 已删除 $count 个模型配置文件${NC}"
     echo ""
-    echo "请使用 cc add 重新添加模型配置"
+    echo "请使用 ccs add 重新添加模型配置"
 }
 
 # 主逻辑
@@ -268,12 +268,12 @@ main() {
         echo "Claude Code 多模型启动器"
         echo ""
         echo "用法:"
-        echo "  cc              - 交互式选择模型"
-        echo "  cc <模型名>     - 直接启动指定模型"
-        echo "  cc add          - 添加新模型配置"
-        echo "  cc remove <模型> - 删除指定模型配置"
-        echo "  cc reset        - 重置所有配置"
-        echo "  cc -h, --help   - 显示帮助"
+        echo "  ccs              - 交互式选择模型"
+        echo "  ccs <模型名>     - 直接启动指定模型"
+        echo "  ccs add          - 添加新模型配置"
+        echo "  ccs remove <模型> - 删除指定模型配置"
+        echo "  ccs reset        - 重置所有配置"
+        echo "  ccs -h, --help   - 显示帮助"
         echo ""
         echo "支持的模型:"
         for key in "${!MODELS[@]}"; do
