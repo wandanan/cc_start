@@ -87,8 +87,13 @@ add_model() {
     echo -e "${BLUE}║     添加新模型配置                 ║${NC}"
     echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
     echo ""
+    echo "说明:"
+    echo "  • 启动命令名称: 用于输入 cc <名称> 启动模型"
+    echo "  • 菜单显示名称: 在交互菜单中展示的名称"
+    echo "  • API 模型 ID:  厂商提供的实际模型标识符"
+    echo ""
 
-    read -p "模型别名 (如 deepseek, 用于命令): " alias
+    read -p "启动命令名称 (如 deepseek, 输入 cc deepseek 启动): " alias
     if [[ -z "$alias" ]]; then
         echo "别名不能为空"
         return 1
@@ -101,7 +106,7 @@ add_model() {
         [[ "$confirm" != "y" && "$confirm" != "Y" ]] && return 1
     fi
 
-    read -p "模型显示名称 (如 DeepSeek V3): " name
+    read -p "菜单显示名称 (如 DeepSeek V3, 用于界面展示): " name
     [[ -z "$name" ]] && name="$alias"
 
     read -p "API Key: " api_key
@@ -116,7 +121,7 @@ add_model() {
         return 1
     fi
 
-    read -p "模型 ID (直接回车使用别名: $alias): " model_id
+    read -p "API 模型 ID (如 gpt-4, 直接回车用: $alias): " model_id
     [[ -z "$model_id" ]] && model_id="$alias"
 
     # 创建配置文件
@@ -138,11 +143,9 @@ EOF
     echo -e "${GREEN}✅ 模型 '$name' 添加成功!${NC}"
     echo "配置文件: $CONFIG_DIR/${alias}.json"
     echo ""
-    echo "使用方法: cc $alias"
-    echo ""
-    echo "提示: 如需在交互菜单中显示，请编辑脚本添加:"
-    echo "  MODELS[\"$alias\"]=\"$alias\""
-    echo "  MODEL_DESCS[\"$alias\"]=\"$name\""
+    echo "使用方法:"
+    echo "  cc $alias        # 直接启动"
+    echo "  cc               # 从菜单选择"
 }
 
 # 启动 Claude
