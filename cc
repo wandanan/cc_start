@@ -140,8 +140,8 @@ EOF
     echo "配置文件: $CONFIG_DIR/${alias}.json"
     echo ""
     echo "使用方法:"
-    echo "  cc $alias        # 直接启动"
-    echo "  cc               # 从菜单选择"
+    echo "  ccs $alias        # 直接启动"
+    echo "  ccs               # 从菜单选择"
 }
 
 # 启动 Claude
