@@ -69,8 +69,24 @@ echo [OK] 配置目录已创建
 echo.
 echo 正在复制模型配置...
 if exist "%~dp0models" (
-    copy /Y "%~dp0models\*.json" "%USERPROFILE%\.claude\models\" >nul 2>&1
-    if not errorlevel 1 echo [OK] 模型配置已复制
+    set "CONFIG_DIR=%USERPROFILE%\.claude\models"
+    for %%f in ("%~dp0models\*.json") do (
+        set "filename=%%~nxf"
+        if exist "!CONFIG_DIR!\!filename!" (
+            echo.
+            echo [提示] 配置文件已存在: !filename!
+            set /p overwrite="是否覆盖? (y/N): "
+            if /i "!overwrite!=="y" (
+                copy /Y "%%f" "!CONFIG_DIR!\" >nul
+                echo [OK] 已覆盖: !filename!
+            ) else (
+                echo [跳过] 保留原文件: !filename!
+            )
+        ) else (
+            copy "%%f" "!CONFIG_DIR!\" >nul
+            echo [OK] 已复制: !filename!
+        )
+    )
 )
 
 :: 检查 PATH
