@@ -58,7 +58,7 @@ show_menu() {
     echo ""
 }
 
-# 准备配置文件
+# 准备环境变量
 prepare_config() {
     local model="$1"
     local model_config="$CONFIG_DIR/${model}.json"
@@ -69,14 +69,20 @@ prepare_config() {
         return 1
     fi
 
-    # 备份原始配置
-    if [[ -f "$USER_SETTINGS" && ! -f "$USER_SETTINGS.backup" ]]; then
-        cp "$USER_SETTINGS" "$USER_SETTINGS.backup"
-        echo "已备份原配置到: $USER_SETTINGS.backup"
-    fi
+    # 从配置文件读取并设置环境变量（而不是复制文件）
+    export ANTHROPIC_AUTH_TOKEN=$(sed -n 's/.*"ANTHROPIC_AUTH_TOKEN": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
+    export ANTHROPIC_BASE_URL=$(sed -n 's/.*"ANTHROPIC_BASE_URL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
+    export ANTHROPIC_MODEL=$(sed -n 's/.*"ANTHROPIC_MODEL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
 
-    # 使用选定模型的配置
-    cp "$model_config" "$USER_SETTINGS"
+    # 可选：设置其他模型变量
+    local sonnet=$(sed -n 's/.*"ANTHROPIC_DEFAULT_SONNET_MODEL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
+    local opus=$(sed -n 's/.*"ANTHROPIC_DEFAULT_OPUS_MODEL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
+    local haiku=$(sed -n 's/.*"ANTHROPIC_DEFAULT_HAIKU_MODEL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
+
+    [[ -n "$sonnet" ]] && export ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet"
+    [[ -n "$opus" ]] && export ANTHROPIC_DEFAULT_OPUS_MODEL="$opus"
+    [[ -n "$haiku" ]] && export ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku"
+
     return 0
 }
 
