@@ -87,19 +87,29 @@ cc myai         # 启动自定义模型
 
 ## 手动安装（备选）
 
-如果不想用自动安装脚本：
+如果不想用自动安装脚本，只需两步：
 
+**Step 1: 把脚本放入 PATH**
+
+方案 A - 复制到系统目录：
 ```bash
-# 1. 复制脚本到 PATH
 mkdir -p ~/.local/bin
 cp cc ~/.local/bin/          # Mac/Linux
 cp cc cc.cmd ~/.local/bin/   # Windows
+```
 
-# 2. 确保 ~/.local/bin 在 PATH 中
+方案 B - 直接把本项目目录加入 PATH：
+```bash
+# 编辑 ~/.bashrc 或 ~/.zshrc，添加
+export PATH="$PATH:/path/to/cc_start"
+```
 
-# 3. 复制模型配置
+**Step 2: 复制模型配置到 Claude 配置目录**
+
+```bash
 mkdir -p ~/.claude/models
 cp models/*.json ~/.claude/models/
+# 然后编辑这些 json 文件，填入你的 API Key
 ```
 
 ## 配置说明
