@@ -71,6 +71,71 @@ prepare_config() {
     return 0
 }
 
+# 添加新模型
+add_model() {
+    echo ""
+    echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║     添加新模型配置                 ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+    echo ""
+
+    read -p "模型别名 (如 gpt4, 用于命令): " alias
+    if [[ -z "$alias" ]]; then
+        echo "别名不能为空"
+        return 1
+    fi
+
+    # 检查是否已存在
+    if [[ -f "$CONFIG_DIR/${alias}.json" ]]; then
+        echo -e "${YELLOW}⚠️  模型 '$alias' 已存在${NC}"
+        read -p "是否覆盖? (y/N): " confirm
+        [[ "$confirm" != "y" && "$confirm" != "Y" ]] && return 1
+    fi
+
+    read -p "模型显示名称 (如 GPT-4): " name
+    [[ -z "$name" ]] && name="$alias"
+
+    read -p "API Key: " api_key
+    if [[ -z "$api_key" ]]; then
+        echo "API Key 不能为空"
+        return 1
+    fi
+
+    read -p "Base URL (如 https://api.openai.com/v1): " base_url
+    if [[ -z "$base_url" ]]; then
+        echo "Base URL 不能为空"
+        return 1
+    fi
+
+    read -p "模型 ID (直接回车使用别名: $alias): " model_id
+    [[ -z "$model_id" ]] && model_id="$alias"
+
+    # 创建配置文件
+    cat > "$CONFIG_DIR/${alias}.json" << EOF
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "$api_key",
+    "ANTHROPIC_BASE_URL": "$base_url",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "$model_id",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "$model_id",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "$model_id",
+    "ANTHROPIC_MODEL": "$model_id"
+  },
+  "includeCoAuthoredBy": false
+}
+EOF
+
+    echo ""
+    echo -e "${GREEN}✅ 模型 '$name' 添加成功!${NC}"
+    echo "配置文件: $CONFIG_DIR/${alias}.json"
+    echo ""
+    echo "使用方法: cc $alias"
+    echo ""
+    echo "提示: 如需在交互菜单中显示，请编辑脚本添加:"
+    echo "  MODELS[\"$alias\"]=\"$alias\""
+    echo "  MODEL_DESCS[\"$alias\"]=\"$name\""
+}
+
 # 启动 Claude
 launch_claude() {
     local model="$1"
@@ -90,6 +155,12 @@ launch_claude() {
 
 # 主逻辑
 main() {
+    # 处理 add 命令
+    if [[ "$1" == "add" ]]; then
+        add_model
+        exit $?
+    fi
+
     # 显示帮助
     if [[ -z "$1" || "$1" == "-h" || "$1" == "--help" || "$1" == "help" ]]; then
         echo "Claude Code 多模型启动器"
@@ -97,6 +168,7 @@ main() {
         echo "用法:"
         echo "  cc              - 交互式选择模型"
         echo "  cc <模型名>     - 直接启动指定模型"
+        echo "  cc add          - 添加新模型配置"
         echo "  cc -h, --help   - 显示帮助"
         echo ""
         echo "支持的模型:"

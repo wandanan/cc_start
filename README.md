@@ -68,8 +68,25 @@ cp models/example-*.json ~/.claude/models/
 
 ## 添加新模型
 
+### 方式一：交互式添加（推荐）
+
+```bash
+cc add
+```
+
+按提示输入：
+- 模型别名（如 `gpt4`，用于命令）
+- 模型显示名称（如 `GPT-4`）
+- API Key
+- Base URL
+- 模型 ID（可选，默认使用别名）
+
+自动创建配置文件，立即可用。
+
+### 方式二：手动创建
+
 1. 在 `~/.claude/models/` 创建新的 JSON 配置文件
-2. 编辑 `cc` 脚本，添加：
+2. 如需在交互菜单中显示，编辑 `cc` 脚本添加：
 
 ```bash
 MODELS["mymodel"]="mymodel"
