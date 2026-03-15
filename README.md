@@ -54,10 +54,11 @@ chmod +x install.sh
 - Windows: `C:\Users\<用户名>\.local\bin\`（推荐自建此目录）
 - Mac/Linux: `~/.local/bin/` 或 `/usr/local/bin/`
 
-然后创建配置目录：
+然后创建配置目录并复制模型配置：
 ```bash
 mkdir -p ~/.claude/models
-cp models/example-*.json ~/.claude/models/
+cp models/*.json ~/.claude/models/
+# 编辑配置文件，填入你的 API Key
 ```
 
 ## 配置格式
@@ -93,15 +94,16 @@ cc add
 
 自动创建配置文件，立即可用。
 
-### 方式二：手动创建
+### 方式二：复制现有配置
 
-1. 在 `~/.claude/models/` 创建新的 JSON 配置文件
-2. 如需在交互菜单中显示，编辑 `cc` 脚本添加：
+看到 `models/` 下的配置文件，复制一份改个名：
 
 ```bash
-MODELS["mymodel"]="mymodel"
-MODEL_DESCS["mymodel"]="My Model Name"
+cp ~/.claude/models/kimi.json ~/.claude/models/myai.json
+# 编辑 myai.json，修改 API Key 和模型参数
 ```
+
+下次运行 `cc` 时，会自动检测到新模型。
 
 ## 工作原理
 

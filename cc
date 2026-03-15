@@ -10,19 +10,21 @@ CLAUDE_BIN="/c/users/10030/.local/bin/claude"
 USER_SETTINGS="/c/Users/10030/.claude/settings.json"
 TEMP_SETTINGS="/c/Users/10030/.claude/.cc-temp-settings.json"
 
-# 定义支持的模型
-declare -A MODELS
-declare -A MODEL_DESCS
+# 自动扫描模型配置文件
+scan_models() {
+    local config_dir="$1"
+    declare -gA MODELS
+    declare -gA MODEL_DESCS
 
-MODELS["kimi"]="kimi"
-MODELS["qwen"]="qwen"
-MODELS["glm"]="glm"
-MODELS["mini"]="mini"
-
-MODEL_DESCS["kimi"]="Kimi K2.5"
-MODEL_DESCS["qwen"]="千问 3.5 Plus"
-MODEL_DESCS["glm"]="GLM 5"
-MODEL_DESCS["mini"]="MiniMax M2.5"
+    for json_file in "$config_dir"/*.json; do
+        [[ -f "$json_file" ]] || continue
+        local name=$(basename "$json_file" .json)
+        MODELS["$name"]="$name"
+        # 从配置文件读取模型ID作为描述
+        local model_id=$(sed -n 's/.*"ANTHROPIC_MODEL": "\([^"]*\)".*/\1/p' "$json_file" 2>/dev/null | head -1)
+        MODEL_DESCS["$name"]="${model_id:-$name}"
+    done
+}
 
 # 颜色定义
 GREEN='\033[0;32m'
@@ -38,7 +40,7 @@ show_menu() {
     echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
     echo ""
     local i=1
-    for key in kimi qwen glm mini; do
+    for key in "${!MODELS[@]}"; do
         printf "  ${GREEN}%d)${NC} %-12s - %s\n" "$i" "$key" "${MODEL_DESCS[$key]}"
         eval "MODEL_$i=$key"
         ((i++))
@@ -155,6 +157,9 @@ launch_claude() {
 
 # 主逻辑
 main() {
+    # 扫描模型配置
+    scan_models "$CONFIG_DIR"
+
     # 处理 add 命令
     if [[ "$1" == "add" ]]; then
         add_model
@@ -172,7 +177,7 @@ main() {
         echo "  cc -h, --help   - 显示帮助"
         echo ""
         echo "支持的模型:"
-        for key in kimi qwen glm mini; do
+        for key in "${!MODELS[@]}"; do
             echo "  $key - ${MODEL_DESCS[$key]}"
         done
 
@@ -192,7 +197,9 @@ main() {
             exit $?
         else
             echo "未知模型: $model"
-            echo "支持的模型: kimi qwen glm mini"
+            echo -n "支持的模型: "
+            printf "%s " "${!MODELS[@]}"
+            echo ""
             exit 1
         fi
     fi
@@ -210,13 +217,13 @@ main() {
 
         # 处理数字选择
         if [[ "$choice" =~ ^[0-9]+$ ]]; then
-            case "$choice" in
-                1) launch_claude "kimi"; exit $? ;;
-                2) launch_claude "qwen"; exit $? ;;
-                3) launch_claude "glm"; exit $? ;;
-                4) launch_claude "mini"; exit $? ;;
-                *) echo "无效选择" ;;
-            esac
+            eval "selected=\$MODEL_$choice"
+            if [[ -n "$selected" && -n "${MODELS[$selected]}" ]]; then
+                launch_claude "$selected"
+                exit $?
+            else
+                echo "无效选择"
+            fi
         # 处理直接输入模型名
         elif [[ -n "${MODELS[$choice]}" ]]; then
             launch_claude "$choice"
