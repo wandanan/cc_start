@@ -89,10 +89,10 @@ add_model() {
     echo ""
     echo "说明:"
     echo "  • 启动命令名称: 用于输入 cc <名称> 启动模型"
-    echo "  • Claude Code 界面显示使用的模型名: 如 kimi-k2.5, gpt-4"
+    echo "  • Claude Code 界面显示使用的模型名: 如 kimi-k2.5"
     echo ""
 
-    read -p "启动命令名称 (如 deepseek, 输入 cc deepseek 启动): " alias
+    read -p "启动命令名称 (如 kimi, 输入 cc kimi 启动): " alias
     if [[ -z "$alias" ]]; then
         echo "别名不能为空"
         return 1
