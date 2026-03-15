@@ -1,0 +1,11 @@
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "your-kimi-api-key-here",
+    "ANTHROPIC_BASE_URL": "https://api.kimi.com/coding/",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "kimi-k2.5",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "kimi-k2.5",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "kimi-k2.5",
+    "ANTHROPIC_MODEL": "kimi-k2.5"
+  },
+  "includeCoAuthoredBy": false
+}

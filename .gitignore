@@ -1,0 +1,19 @@
+# 用户配置文件（包含 API Key，不要提交）
+*.json
+!example-*.json
+
+# 备份文件
+*.backup
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 其他
+node_modules/
