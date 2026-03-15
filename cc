@@ -163,8 +163,14 @@ launch_claude() {
     echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"
     echo ""
 
-    # 启动 claude
-    "$CLAUDE_BIN" "$@"
+    # 启动 claude，使用 env 确保环境变量传递
+    env ANTHROPIC_AUTH_TOKEN="$ANTHROPIC_AUTH_TOKEN" \
+        ANTHROPIC_BASE_URL="$ANTHROPIC_BASE_URL" \
+        ANTHROPIC_MODEL="$ANTHROPIC_MODEL" \
+        ANTHROPIC_DEFAULT_SONNET_MODEL="${ANTHROPIC_DEFAULT_SONNET_MODEL:-$ANTHROPIC_MODEL}" \
+        ANTHROPIC_DEFAULT_OPUS_MODEL="${ANTHROPIC_DEFAULT_OPUS_MODEL:-$ANTHROPIC_MODEL}" \
+        ANTHROPIC_DEFAULT_HAIKU_MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-$ANTHROPIC_MODEL}" \
+        "$CLAUDE_BIN" "$@"
 }
 
 # 重置所有配置
