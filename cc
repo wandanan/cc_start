@@ -161,6 +161,35 @@ launch_claude() {
     "$CLAUDE_BIN" "$@"
 }
 
+# 重置所有配置
+reset_models() {
+    echo ""
+    echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
+    echo -e "${BLUE}║     重置所有模型配置               ║${NC}"
+    echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+    echo ""
+    echo "这将删除所有模型配置文件: $CONFIG_DIR/*.json"
+    echo ""
+    read -p "确定要重置吗? (yes/no): " confirm
+    if [[ "$confirm" != "yes" ]]; then
+        echo "取消重置"
+        return 1
+    fi
+
+    # 删除所有 json 配置文件
+    local count=0
+    for f in "$CONFIG_DIR"/*.json; do
+        [[ -f "$f" ]] || continue
+        rm "$f"
+        ((count++))
+    done
+
+    echo ""
+    echo -e "${GREEN}✅ 已删除 $count 个模型配置文件${NC}"
+    echo ""
+    echo "请使用 cc add 重新添加模型配置"
+}
+
 # 主逻辑
 main() {
     # 扫描模型配置
@@ -172,6 +201,12 @@ main() {
         exit $?
     fi
 
+    # 处理 reset 命令
+    if [[ "$1" == "reset" ]]; then
+        reset_models
+        exit $?
+    fi
+
     # 显示帮助
     if [[ -z "$1" || "$1" == "-h" || "$1" == "--help" || "$1" == "help" ]]; then
         echo "Claude Code 多模型启动器"
@@ -180,6 +215,7 @@ main() {
         echo "  cc              - 交互式选择模型"
         echo "  cc <模型名>     - 直接启动指定模型"
         echo "  cc add          - 添加新模型配置"
+        echo "  cc reset        - 重置所有配置"
         echo "  cc -h, --help   - 显示帮助"
         echo ""
         echo "支持的模型:"
