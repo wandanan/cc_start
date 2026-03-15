@@ -89,8 +89,7 @@ add_model() {
     echo ""
     echo "说明:"
     echo "  • 启动命令名称: 用于输入 cc <名称> 启动模型"
-    echo "  • 菜单显示名称: 在交互菜单中展示的名称"
-    echo "  • API 模型 ID:  厂商提供的实际模型标识符"
+    echo "  • Claude Code 界面显示使用的模型名: 如 kimi-k2.5, gpt-4"
     echo ""
 
     read -p "启动命令名称 (如 deepseek, 输入 cc deepseek 启动): " alias
@@ -106,7 +105,7 @@ add_model() {
         [[ "$confirm" != "y" && "$confirm" != "Y" ]] && return 1
     fi
 
-    read -p "菜单显示名称 (如 DeepSeek V3, 用于界面展示): " name
+    read -p "Claude Code 界面显示使用的模型名 (如 DeepSeek V3): " name
     [[ -z "$name" ]] && name="$alias"
 
     read -p "API Key: " api_key
