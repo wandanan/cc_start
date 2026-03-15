@@ -58,7 +58,7 @@ show_menu() {
     echo ""
 }
 
-# 准备环境变量
+# 准备配置文件
 prepare_config() {
     local model="$1"
     local model_config="$CONFIG_DIR/${model}.json"
@@ -69,19 +69,13 @@ prepare_config() {
         return 1
     fi
 
-    # 从配置文件读取并设置环境变量（而不是复制文件）
-    export ANTHROPIC_AUTH_TOKEN=$(sed -n 's/.*"ANTHROPIC_AUTH_TOKEN": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
-    export ANTHROPIC_BASE_URL=$(sed -n 's/.*"ANTHROPIC_BASE_URL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
-    export ANTHROPIC_MODEL=$(sed -n 's/.*"ANTHROPIC_MODEL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
+    # 备份原始配置（如果不存在备份）
+    if [[ -f "$USER_SETTINGS" && ! -f "$USER_SETTINGS.backup" ]]; then
+        cp "$USER_SETTINGS" "$USER_SETTINGS.backup"
+    fi
 
-    # 可选：设置其他模型变量
-    local sonnet=$(sed -n 's/.*"ANTHROPIC_DEFAULT_SONNET_MODEL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
-    local opus=$(sed -n 's/.*"ANTHROPIC_DEFAULT_OPUS_MODEL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
-    local haiku=$(sed -n 's/.*"ANTHROPIC_DEFAULT_HAIKU_MODEL": "\([^"]*\)".*/\1/p' "$model_config" | head -1)
-
-    [[ -n "$sonnet" ]] && export ANTHROPIC_DEFAULT_SONNET_MODEL="$sonnet"
-    [[ -n "$opus" ]] && export ANTHROPIC_DEFAULT_OPUS_MODEL="$opus"
-    [[ -n "$haiku" ]] && export ANTHROPIC_DEFAULT_HAIKU_MODEL="$haiku"
+    # 使用临时文件，避免多窗口冲突
+    cp "$model_config" "$USER_SETTINGS"
 
     return 0
 }
@@ -163,14 +157,8 @@ launch_claude() {
     echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"
     echo ""
 
-    # 启动 claude，使用 env 确保环境变量传递
-    env ANTHROPIC_AUTH_TOKEN="$ANTHROPIC_AUTH_TOKEN" \
-        ANTHROPIC_BASE_URL="$ANTHROPIC_BASE_URL" \
-        ANTHROPIC_MODEL="$ANTHROPIC_MODEL" \
-        ANTHROPIC_DEFAULT_SONNET_MODEL="${ANTHROPIC_DEFAULT_SONNET_MODEL:-$ANTHROPIC_MODEL}" \
-        ANTHROPIC_DEFAULT_OPUS_MODEL="${ANTHROPIC_DEFAULT_OPUS_MODEL:-$ANTHROPIC_MODEL}" \
-        ANTHROPIC_DEFAULT_HAIKU_MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-$ANTHROPIC_MODEL}" \
-        "$CLAUDE_BIN" "$@"
+    # 启动 claude
+    "$CLAUDE_BIN" "$@"
 }
 
 # 重置所有配置
