@@ -53,10 +53,10 @@ if [[ "$SKIP_SCRIPTS" == "1" ]]; then
 else
     cp "$SCRIPT_DIR/cc" "$INSTALL_DIR/cc"
     chmod +x "$INSTALL_DIR/cc"
-    # Create ccs alias to avoid conflict with system cc (C compiler)
+    # Create ccs alias - both cc and ccs are supported
     ln -sf "$INSTALL_DIR/cc" "$INSTALL_DIR/ccs"
     echo -e "${GREEN}[OK] Scripts installed${NC}"
-    echo -e "${GREEN}[OK] Created alias 'ccs' to avoid conflict with C compiler${NC}"
+    echo -e "${GREEN}[OK] Commands available: 'cc' and 'ccs'${NC}"
 fi
 
 # Create config directory
@@ -115,15 +115,15 @@ echo "   Installation Complete!"
 echo "==================================="
 echo ""
 echo "Usage:"
-echo "  ccs              - Interactive model selection"
-echo "  ccs <model>      - Start specified model"
-echo "  ccs add          - Add new model config"
-echo "  ccs remove <model> - Remove model config"
-echo "  ccs reset        - Reset all configs"
+echo "  cc/ccs              - Interactive model selection"
+echo "  cc/ccs <model>      - Start specified model"
+echo "  cc/ccs add          - Add new model config"
+echo "  cc/ccs remove <model> - Remove model config"
+echo "  cc/ccs reset        - Reset all configs"
 echo ""
-echo "Note: Use 'ccs' instead of 'cc' to avoid conflict with C compiler"
+echo "Note: Both 'cc' and 'ccs' commands are supported"
 echo ""
 echo "Config location:"
 echo "  ~/.claude/models/"
 echo ""
-echo "[IMPORTANT] Run 'ccs add' to add model configuration"
+echo "[IMPORTANT] Run 'cc add' or 'ccs add' to add model configuration"

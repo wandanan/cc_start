@@ -26,24 +26,27 @@ chmod +x install.sh && ./install.sh
 - ✅ 创建配置目录
 - ✅ 复制模型配置文件
 - ✅ 自动添加 PATH（Windows）
-- ✅ 创建 `ccs` 别名（避免与系统 C 编译器冲突）
+- ✅ 同时创建 `cc` 和 `ccs` 命令
 
-> ⚠️ **安装后如果提示 `ccs` 命令找不到？**
+> ⚠️ **安装后如果提示 `cc` 或 `ccs` 命令找不到？**
 >
 > Windows 安装程序会尝试自动添加 PATH，但如果失效，请手动添加：
 > `系统属性 → 环境变量 → 编辑用户 PATH → 新建 → 添加 %USERPROFILE%\.local\bin`
 
-### 特别说明：为什么使用 `ccs` 而不是 `cc`？
+### 命令选择：cc 或 ccs
 
-Linux 系统默认有一个 `/usr/bin/cc` 命令（C 编译器），为避免冲突，**所有平台统一使用 `ccs` 命令**（CC Start 的缩写）。
+本工具同时支持 `cc` 和 `ccs` 两种命令，功能完全相同：
 
 ```bash
-# 使用 ccs 代替 cc
-ccs add        # 添加模型配置
+# 两种命令等效
+cc add         # 添加模型配置
 ccs kimi       # 启动 Kimi 模型
+cc kimi        # 同样启动 Kimi 模型
 ```
 
-安装完成后，**先添加模型配置**，然后输入 `ccs` 即可使用：
+> **Linux 用户注意**：Linux 系统默认有 `/usr/bin/cc`（C 编译器），如果你需要使用 C 编译器，请确保 PATH 中 C 编译器的路径在 `~/.local/bin` 之前，或使用 `ccs` 命令来避免冲突。
+
+安装完成后，**先添加模型配置**，然后输入 `cc` 或 `ccs` 即可使用：
 
 ```bash
 $ ccs
@@ -65,13 +68,13 @@ $ ccs
 
 | 命令 | 模型 |
 |------|------|
-| `ccs kimi` | Kimi K2.5 |
-| `ccs qwen` | 千问 3.5 Plus |
-| `ccs glm` | GLM 5 |
-| `ccs mini` | MiniMax M2.5 |
-| `ccs <任意>` | **其他任意模型** |
+| `cc kimi` / `ccs kimi` | Kimi K2.5 |
+| `cc qwen` / `ccs qwen` | 千问 3.5 Plus |
+| `cc glm` / `ccs glm` | GLM 5 |
+| `cc mini` / `ccs mini` | MiniMax M2.5 |
+| `cc <任意>` / `ccs <任意>` | **其他任意模型** |
 
-> 💡 **想添加自己的模型？** 使用 `ccs add` 命令，支持任意兼容 Claude API 的模型。
+> 💡 **想添加自己的模型？** 使用 `cc add` 或 `ccs add` 命令，支持任意兼容 Claude API 的模型。
 
 ## 🔧 配置 API Key（必做）
 
@@ -80,16 +83,18 @@ $ ccs
 ### 推荐方式：命令行添加
 
 ```bash
+cc add
+# 或
 ccs add
 ```
 
 按提示输入：
-- **启动命令名称**：如 `kimi`（之后用 `ccs kimi` 启动）
+- **启动命令名称**：如 `kimi`（之后用 `cc kimi` 或 `ccs kimi` 启动）
 - **模型 ID**：如 `kimi-k2.5`
 - **API Key**：你的 API 密钥
 - **Base URL**：API 地址，如 `https://api.kimi.com/coding/`
 
-重复 `ccs add` 可添加多个模型。
+重复 `cc add` 或 `ccs add` 可添加多个模型。
 
 ### 备选方式：复制修改
 
@@ -98,28 +103,30 @@ cp ~/.claude/models/kimi.json ~/.claude/models/myai.json
 # 编辑文件，修改 API Key
 ```
 
-然后输入 `ccs myai` 即可启动。
+然后输入 `cc myai` 或 `ccs myai` 即可启动。
 
 ## 使用示例
 
 ```bash
-ccs              # 交互式选择模型
-ccs kimi         # 直接启动 Kimi
-ccs qwen         # 在另一个窗口启动 Qwen
-ccs myai         # 启动自定义模型
+cc               # 交互式选择模型
+ccs              # 等效命令
+cc kimi          # 直接启动 Kimi
+ccs kimi         # 等效命令
+cc qwen          # 在另一个窗口启动 Qwen
+cc myai          # 启动自定义模型
 ```
 
 **多窗口同时使用**：
 
 ```bash
 # 终端 1
-ccs kimi
+cc kimi
 
 # 终端 2（同时运行）
-ccs qwen
+cc qwen
 
 # 终端 3（同时运行）
-ccs glm
+cc glm
 ```
 
 每个窗口独立使用不同模型，配置互不干扰。
@@ -133,8 +140,10 @@ ccs glm
 方案 A - 复制到系统目录：
 ```bash
 mkdir -p ~/.local/bin
-cp cc ~/.local/bin/ccs          # Mac/Linux
-cp cc cc.cmd ~/.local/bin/      # Windows (会自动创建 ccs 别名)
+cp cc ~/.local/bin/cc           # Mac/Linux
+cp cc cc.cmd ~/.local/bin/      # Windows
+# 创建 ccs 链接（可选）
+ln -sf ~/.local/bin/cc ~/.local/bin/ccs
 ```
 
 方案 B - 直接把本项目目录加入 PATH：
