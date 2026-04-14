@@ -162,7 +162,7 @@ launch_claude() {
     fi
 
     # 交互式选择启动模式（上下箭头）
-    local options=("dangerously-skip-permissions 启动" "普通启动")
+    local options=("1. 普通启动" "2. dangerously-skip-permissions 启动")
     local count=${#options[@]}
     local selected=0
     local key key2 key3
@@ -235,7 +235,7 @@ launch_claude() {
     echo ""
 
     # 使用 --settings 参数直接指定配置文件，避免多窗口冲突
-    if [[ $selected -eq 0 ]]; then
+    if [[ $selected -eq 1 ]]; then
         "$CLAUDE_BIN" --dangerously-skip-permissions --settings "$model_config" "$@"
     else
         "$CLAUDE_BIN" --settings "$model_config" "$@"
