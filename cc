@@ -170,43 +170,65 @@ launch_claude() {
 
     echo ""
     printf "\033[34m请选择启动模式 (↑↓选择, 回车确认):\033[0m\n"
+    printf '\033[?25l'  # 隐藏光标
 
-    # 隐藏光标 + 保存光标位置
-    # 全部使用原生 ANSI 序列，不依赖 tput / TERM 变量
-    # \033[?25l = 隐藏光标
-    # \033[s    = 保存光标位置（VT100/ANSI，Windows Terminal 支持）
-    printf '\033[?25l\033[s'
+    # 两端环境互不兼容，必须分支处理（诊断结论）：
+    # - PowerShell (MSYS bash): stdin 可读 + \033[s/u 光标保存恢复
+    # - mintty (Git Bash):      stdin 异常需 /dev/tty + \033[nA 光标上移
+    if [[ "$TERM_PROGRAM" == "mintty" ]]; then
+        # ── mintty 分支 ──
+        exec 3</dev/tty
+        while true; do
+            for i in "${!options[@]}"; do
+                if [[ $i -eq $selected ]]; then
+                    printf "  \033[32m▶ ${options[$i]}\033[0m\033[K\n"
+                else
+                    printf "    ${options[$i]}\033[K\n"
+                fi
+            done
 
-    while true; do
-        # \033[u = 恢复到保存的光标位置，原地重绘，不累积新行
-        printf '\033[u'
-        for i in "${!options[@]}"; do
-            if [[ $i -eq $selected ]]; then
-                printf "  \033[32m▶ ${options[$i]}\033[0m\033[K\n"
-            else
-                printf "    ${options[$i]}\033[K\n"
+            IFS= read -rsn1 key <&3 || true
+            if [[ "$key" == $'\x1b' ]]; then
+                IFS= read -rsn1 -t 0.1 key2 <&3 || true
+                IFS= read -rsn1 -t 0.1 key3 <&3 || true
+                case "$key2$key3" in
+                    '[A') selected=$(( (selected - 1 + count) % count )) ;;
+                    '[B') selected=$(( (selected + 1) % count )) ;;
+                esac
+                printf "\033[${count}A"
+            elif [[ "$key" == "" ]]; then
+                break
             fi
         done
+        exec 3>&-
+    else
+        # ── PowerShell / 其他分支 ──
+        printf '\033[s'  # 保存光标位置
+        while true; do
+            printf '\033[u'  # 恢复到保存的光标位置
+            for i in "${!options[@]}"; do
+                if [[ $i -eq $selected ]]; then
+                    printf "  \033[32m▶ ${options[$i]}\033[0m\033[K\n"
+                else
+                    printf "    ${options[$i]}\033[K\n"
+                fi
+            done
 
-        # 直接从 stdin 读取（交互式调用时 stdin 即终端，无需 /dev/tty）
-        # 避免每次 < /dev/tty 重新打开 fd 导致缓冲区丢失
-        IFS= read -rsn1 key
-        if [[ "$key" == $'\x1b' ]]; then
-            # 两次 -rsn1 + 超时，防止 -rsn2 等待第 2 字节时阻塞
-            IFS= read -rsn1 -t 0.1 key2
-            IFS= read -rsn1 -t 0.1 key3
-            case "$key2$key3" in
-                # 取模循环：首尾相接
-                '[A') selected=$(( (selected - 1 + count) % count )) ;;
-                '[B') selected=$(( (selected + 1) % count )) ;;
-            esac
-        elif [[ "$key" == "" ]]; then
-            break
-        fi
-    done
+            IFS= read -rsn1 key
+            if [[ "$key" == $'\x1b' ]]; then
+                IFS= read -rsn1 -t 0.1 key2
+                IFS= read -rsn1 -t 0.1 key3
+                case "$key2$key3" in
+                    '[A') selected=$(( (selected - 1 + count) % count )) ;;
+                    '[B') selected=$(( (selected + 1) % count )) ;;
+                esac
+            elif [[ "$key" == "" ]]; then
+                break
+            fi
+        done
+    fi
 
-    # \033[?25h = 恢复光标显示
-    printf '\033[?25h'
+    printf '\033[?25h'  # 恢复光标
 
     echo ""
     echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"

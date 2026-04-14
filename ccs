@@ -163,45 +163,72 @@ launch_claude() {
 
     # 交互式选择启动模式（上下箭头）
     local options=("dangerously-skip-permissions 启动" "普通启动")
+    local count=${#options[@]}
     local selected=0
-    local key
-    local buf
+    local key key2 key3
+    local i
 
     echo ""
-    printf "${BLUE}请选择启动模式 (↑↓选择, 回车确认):${NC}\n\n"
+    printf "\033[34m请选择启动模式 (↑↓选择, 回车确认):\033[0m\n"
+    printf '\033[?25l'  # 隐藏光标
 
-    # 隐藏光标
-    tput civis 2>/dev/null
+    # 两端环境互不兼容，必须分支处理（诊断结论）：
+    # - PowerShell (MSYS bash): stdin 可读 + \033[s/u 光标保存恢复
+    # - mintty (Git Bash):      stdin 异常需 /dev/tty + \033[nA 光标上移
+    if [[ "$TERM_PROGRAM" == "mintty" ]]; then
+        # ── mintty 分支 ──
+        exec 3</dev/tty
+        while true; do
+            for i in "${!options[@]}"; do
+                if [[ $i -eq $selected ]]; then
+                    printf "  \033[32m▶ ${options[$i]}\033[0m\033[K\n"
+                else
+                    printf "    ${options[$i]}\033[K\n"
+                fi
+            done
 
-    while true; do
-        # 一次性构建所有选项输出，减少终端写入次数
-        buf=""
-        for i in "${!options[@]}"; do
-            if [[ $i -eq $selected ]]; then
-                buf+="\033[2K  ${GREEN}▶ ${options[$i]}${NC}\n"
-            else
-                buf+="\033[2K    ${options[$i]}\n"
+            IFS= read -rsn1 key <&3 || true
+            if [[ "$key" == $'\x1b' ]]; then
+                IFS= read -rsn1 -t 0.1 key2 <&3 || true
+                IFS= read -rsn1 -t 0.1 key3 <&3 || true
+                case "$key2$key3" in
+                    '[A') selected=$(( (selected - 1 + count) % count )) ;;
+                    '[B') selected=$(( (selected + 1) % count )) ;;
+                esac
+                printf "\033[${count}A"
+            elif [[ "$key" == "" ]]; then
+                break
             fi
         done
-        printf "$buf"
+        exec 3>&-
+    else
+        # ── PowerShell / 其他分支 ──
+        printf '\033[s'  # 保存光标位置
+        while true; do
+            printf '\033[u'  # 恢复到保存的光标位置
+            for i in "${!options[@]}"; do
+                if [[ $i -eq $selected ]]; then
+                    printf "  \033[32m▶ ${options[$i]}\033[0m\033[K\n"
+                else
+                    printf "    ${options[$i]}\033[K\n"
+                fi
+            done
 
-        # 读取按键
-        IFS= read -rsn1 key < /dev/tty || true
-        if [[ "$key" == $'\x1b' ]]; then
-            read -rsn2 key < /dev/tty || true
-            case "$key" in
-                '[A') [[ $selected -gt 0 ]] && selected=$((selected - 1)) || true ;;
-                '[B') [[ $selected -lt 1 ]] && selected=$((selected + 1)) || true ;;
-            esac
-            # 光标上移回选项起始位置
-            printf "\033[2A"
-        elif [[ "$key" == "" ]]; then
-            break
-        fi
-    done
+            IFS= read -rsn1 key
+            if [[ "$key" == $'\x1b' ]]; then
+                IFS= read -rsn1 -t 0.1 key2
+                IFS= read -rsn1 -t 0.1 key3
+                case "$key2$key3" in
+                    '[A') selected=$(( (selected - 1 + count) % count )) ;;
+                    '[B') selected=$(( (selected + 1) % count )) ;;
+                esac
+            elif [[ "$key" == "" ]]; then
+                break
+            fi
+        done
+    fi
 
-    # 恢复光标
-    tput cnorm 2>/dev/null
+    printf '\033[?25h'  # 恢复光标
 
     echo ""
     echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"

@@ -10,4 +10,4 @@ if not exist "%BASH%" (
     exit /b 1
 )
 
-"%BASH%" -lc "\"$(cygpath -u \"%USERPROFILE%\\.local\\bin\\ccs\")\" $*" -- %*
+"%BASH%" -lic "\"$(cygpath -u '%~dp0ccs')\" $*" -- %*
