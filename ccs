@@ -161,12 +161,58 @@ launch_claude() {
         exit 1
     fi
 
+    # 交互式选择启动模式（上下箭头）
+    local options=("dangerously-skip-permissions 启动" "普通启动")
+    local selected=0
+    local key
+    local buf
+
+    echo ""
+    printf "${BLUE}请选择启动模式 (↑↓选择, 回车确认):${NC}\n\n"
+
+    # 隐藏光标
+    tput civis 2>/dev/null
+
+    while true; do
+        # 一次性构建所有选项输出，减少终端写入次数
+        buf=""
+        for i in "${!options[@]}"; do
+            if [[ $i -eq $selected ]]; then
+                buf+="\033[2K  ${GREEN}▶ ${options[$i]}${NC}\n"
+            else
+                buf+="\033[2K    ${options[$i]}\n"
+            fi
+        done
+        printf "$buf"
+
+        # 读取按键
+        IFS= read -rsn1 key < /dev/tty || true
+        if [[ "$key" == $'\x1b' ]]; then
+            read -rsn2 key < /dev/tty || true
+            case "$key" in
+                '[A') [[ $selected -gt 0 ]] && selected=$((selected - 1)) || true ;;
+                '[B') [[ $selected -lt 1 ]] && selected=$((selected + 1)) || true ;;
+            esac
+            # 光标上移回选项起始位置
+            printf "\033[2A"
+        elif [[ "$key" == "" ]]; then
+            break
+        fi
+    done
+
+    # 恢复光标
+    tput cnorm 2>/dev/null
+
     echo ""
     echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"
     echo ""
 
     # 使用 --settings 参数直接指定配置文件，避免多窗口冲突
-    "$CLAUDE_BIN" --dangerously-skip-permissions --settings "$model_config" "$@"
+    if [[ $selected -eq 0 ]]; then
+        "$CLAUDE_BIN" --dangerously-skip-permissions --settings "$model_config" "$@"
+    else
+        "$CLAUDE_BIN" --settings "$model_config" "$@"
+    fi
 }
 
 # 删除指定模型

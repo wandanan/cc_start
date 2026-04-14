@@ -161,12 +161,63 @@ launch_claude() {
         exit 1
     fi
 
+    # 交互式选择启动模式（上下箭头）
+    local options=("dangerously-skip-permissions 启动" "普通启动")
+    local count=${#options[@]}
+    local selected=0
+    local key key2 key3
+    local i
+
+    echo ""
+    printf "\033[34m请选择启动模式 (↑↓选择, 回车确认):\033[0m\n"
+
+    # 隐藏光标 + 保存光标位置
+    # 全部使用原生 ANSI 序列，不依赖 tput / TERM 变量
+    # \033[?25l = 隐藏光标
+    # \033[s    = 保存光标位置（VT100/ANSI，Windows Terminal 支持）
+    printf '\033[?25l\033[s'
+
+    while true; do
+        # \033[u = 恢复到保存的光标位置，原地重绘，不累积新行
+        printf '\033[u'
+        for i in "${!options[@]}"; do
+            if [[ $i -eq $selected ]]; then
+                printf "  \033[32m▶ ${options[$i]}\033[0m\033[K\n"
+            else
+                printf "    ${options[$i]}\033[K\n"
+            fi
+        done
+
+        # 直接从 stdin 读取（交互式调用时 stdin 即终端，无需 /dev/tty）
+        # 避免每次 < /dev/tty 重新打开 fd 导致缓冲区丢失
+        IFS= read -rsn1 key
+        if [[ "$key" == $'\x1b' ]]; then
+            # 两次 -rsn1 + 超时，防止 -rsn2 等待第 2 字节时阻塞
+            IFS= read -rsn1 -t 0.1 key2
+            IFS= read -rsn1 -t 0.1 key3
+            case "$key2$key3" in
+                # 取模循环：首尾相接
+                '[A') selected=$(( (selected - 1 + count) % count )) ;;
+                '[B') selected=$(( (selected + 1) % count )) ;;
+            esac
+        elif [[ "$key" == "" ]]; then
+            break
+        fi
+    done
+
+    # \033[?25h = 恢复光标显示
+    printf '\033[?25h'
+
     echo ""
     echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"
     echo ""
 
     # 使用 --settings 参数直接指定配置文件，避免多窗口冲突
-    "$CLAUDE_BIN" --dangerously-skip-permissions --settings "$model_config" "$@"
+    if [[ $selected -eq 0 ]]; then
+        "$CLAUDE_BIN" --dangerously-skip-permissions --settings "$model_config" "$@"
+    else
+        "$CLAUDE_BIN" --settings "$model_config" "$@"
+    fi
 }
 
 # 删除指定模型
