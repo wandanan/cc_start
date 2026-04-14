@@ -27,6 +27,7 @@ chmod +x install.sh && ./install.sh
 - ✅ 复制模型配置文件
 - ✅ 自动添加 PATH（Windows）
 - ✅ 同时创建 `cc` 和 `ccs` 命令
+- ✅ 支持上下箭头选择启动模式
 
 > ⚠️ **安装后如果提示 `cc` 或 `ccs` 命令找不到？**
 >
@@ -61,8 +62,21 @@ $ ccs
   4) mini        - MiniMax M2.5
 
 请选择模型 (输入编号或名称): 2
+
+请选择启动模式 (↑↓选择, 回车确认):
+
+  ▶ 1. 普通启动
+    2. dangerously-skip-permissions 启动
+
 🚀 启动 Claude Code [千问 3.5 Plus]...
 ```
+
+选择模型后，用 ↑↓ 方向键切换启动模式，回车确认：
+
+| 模式 | 说明 |
+|------|------|
+| 普通启动 | 标准模式，Claude Code 会请求权限确认 |
+| dangerously-skip-permissions 启动 | 跳过所有权限确认，适合信任的自动化场景 |
 
 ## 支持的模型
 
@@ -140,9 +154,11 @@ cc glm
 方案 A - 复制到系统目录：
 ```bash
 mkdir -p ~/.local/bin
-cp cc ~/.local/bin/cc           # Mac/Linux
-cp cc cc.cmd ~/.local/bin/      # Windows
-# 创建 ccs 链接（可选）
+cp cc ~/.local/bin/cc                        # Mac/Linux
+cp cc.cmd ~/.local/bin/cc.cmd               # Windows
+cp cc ~/.local/bin/ccs                       # Mac/Linux（或建软链接）
+cp ccs.cmd ~/.local/bin/ccs.cmd             # Windows
+# Mac/Linux 也可用软链接代替复制
 ln -sf ~/.local/bin/cc ~/.local/bin/ccs
 ```
 
