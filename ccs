@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Claude Code 多模型启动器
 # 用法: cc/ccs [模型名] 或直接输入 cc/ccs 进行交互选择
@@ -22,11 +22,13 @@ CLAUDE_BIN="$(which claude 2>/dev/null || echo "$HOME_DIR/.local/bin/claude")"
 USER_SETTINGS="$HOME_DIR/.claude/settings.json"
 TEMP_SETTINGS="$HOME_DIR/.claude/.cc-temp-settings.json"
 
+# 全局关联数组（需要 bash 4.0+，macOS 用户请通过 homebrew 安装：brew install bash）
+declare -A MODELS
+declare -A MODEL_DESCS
+
 # 自动扫描模型配置文件
 scan_models() {
     local config_dir="$1"
-    declare -gA MODELS
-    declare -gA MODEL_DESCS
 
     for json_file in "$config_dir"/*.json; do
         [[ -f "$json_file" ]] || continue

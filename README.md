@@ -8,6 +8,12 @@
 
 ## 🚀 一分钟安装
 
+> **macOS 用户前置步骤**：macOS 系统自带的 bash 版本为 3.2，不支持本工具所需的关联数组特性（bash 4.0+）。请先通过 Homebrew 安装新版 bash：
+> ```bash
+> brew install bash
+> ```
+> Linux 用户无需此步骤，系统自带 bash 版本已满足要求。
+
 ```bash
 # 克隆项目
 git clone https://github.com/wandanan/cc_start.git
@@ -208,7 +214,9 @@ claude --settings ~/.claude/models/qwen.json
 ## 依赖
 
 - [Claude Code](https://claude.ai/code) - 安装命令：`curl -fsSL https://claude.ai/install.sh | bash`
-- Git Bash (Windows) 或 Bash (Mac/Linux)
+- Git Bash (Windows) 或 Bash 4.0+ (Mac/Linux)
+  - **macOS**：系统自带 bash 3.2，需通过 Homebrew 安装：`brew install bash`
+  - **Linux**：主流发行版（Ubuntu/Debian/Fedora/CentOS 等）自带 bash 4.x/5.x，无需额外安装
 
 ## Star History
 
