@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Claude Code 多模型启动器
 # 用法: cc/ccs [模型名] 或直接输入 cc/ccs 进行交互选择
@@ -22,11 +22,13 @@ CLAUDE_BIN="$(which claude 2>/dev/null || echo "$HOME_DIR/.local/bin/claude")"
 USER_SETTINGS="$HOME_DIR/.claude/settings.json"
 TEMP_SETTINGS="$HOME_DIR/.claude/.cc-temp-settings.json"
 
+# 全局关联数组（需要 bash 4.0+，macOS 用户请通过 homebrew 安装：brew install bash）
+declare -A MODELS
+declare -A MODEL_DESCS
+
 # 自动扫描模型配置文件
 scan_models() {
     local config_dir="$1"
-    declare -gA MODELS
-    declare -gA MODEL_DESCS
 
     for json_file in "$config_dir"/*.json; do
         [[ -f "$json_file" ]] || continue
@@ -161,12 +163,85 @@ launch_claude() {
         exit 1
     fi
 
+    # 交互式选择启动模式（上下箭头）
+    local options=("1. 普通启动" "2. dangerously-skip-permissions 启动")
+    local count=${#options[@]}
+    local selected=0
+    local key key2 key3
+    local i
+
+    echo ""
+    printf "\033[34m请选择启动模式 (↑↓选择, 回车确认):\033[0m\n"
+    printf '\033[?25l'  # 隐藏光标
+
+    # 两端环境互不兼容，必须分支处理（诊断结论）：
+    # - PowerShell (MSYS bash): stdin 可读 + \033[s/u 光标保存恢复
+    # - mintty (Git Bash):      stdin 异常需 /dev/tty + \033[nA 光标上移
+    if [[ "$TERM_PROGRAM" == "mintty" ]]; then
+        # ── mintty 分支 ──
+        exec 3</dev/tty
+        while true; do
+            for i in "${!options[@]}"; do
+                if [[ $i -eq $selected ]]; then
+                    printf "  \033[32m▶ ${options[$i]}\033[0m\033[K\n"
+                else
+                    printf "    ${options[$i]}\033[K\n"
+                fi
+            done
+
+            IFS= read -rsn1 key <&3 || true
+            if [[ "$key" == $'\x1b' ]]; then
+                IFS= read -rsn1 -t 0.1 key2 <&3 || true
+                IFS= read -rsn1 -t 0.1 key3 <&3 || true
+                case "$key2$key3" in
+                    '[A') selected=$(( (selected - 1 + count) % count )) ;;
+                    '[B') selected=$(( (selected + 1) % count )) ;;
+                esac
+                printf "\033[${count}A"
+            elif [[ "$key" == "" ]]; then
+                break
+            fi
+        done
+        exec 3>&-
+    else
+        # ── PowerShell / 其他分支 ──
+        printf '\033[s'  # 保存光标位置
+        while true; do
+            printf '\033[u'  # 恢复到保存的光标位置
+            for i in "${!options[@]}"; do
+                if [[ $i -eq $selected ]]; then
+                    printf "  \033[32m▶ ${options[$i]}\033[0m\033[K\n"
+                else
+                    printf "    ${options[$i]}\033[K\n"
+                fi
+            done
+
+            IFS= read -rsn1 key
+            if [[ "$key" == $'\x1b' ]]; then
+                IFS= read -rsn1 -t 0.1 key2
+                IFS= read -rsn1 -t 0.1 key3
+                case "$key2$key3" in
+                    '[A') selected=$(( (selected - 1 + count) % count )) ;;
+                    '[B') selected=$(( (selected + 1) % count )) ;;
+                esac
+            elif [[ "$key" == "" ]]; then
+                break
+            fi
+        done
+    fi
+
+    printf '\033[?25h'  # 恢复光标
+
     echo ""
     echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"
     echo ""
 
     # 使用 --settings 参数直接指定配置文件，避免多窗口冲突
-    "$CLAUDE_BIN" --settings "$model_config" "$@"
+    if [[ $selected -eq 1 ]]; then
+        "$CLAUDE_BIN" --dangerously-skip-permissions --settings "$model_config" "$@"
+    else
+        "$CLAUDE_BIN" --settings "$model_config" "$@"
+    fi
 }
 
 # 删除指定模型

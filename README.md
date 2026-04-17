@@ -8,6 +8,12 @@
 
 ## 🚀 一分钟安装
 
+> **macOS 用户前置步骤**：macOS 系统自带的 bash 版本为 3.2，不支持本工具所需的关联数组特性（bash 4.0+）。请先通过 Homebrew 安装新版 bash：
+> ```bash
+> brew install bash
+> ```
+> Linux 用户无需此步骤，系统自带 bash 版本已满足要求。
+
 ```bash
 # 克隆项目
 git clone https://github.com/wandanan/cc_start.git
@@ -27,6 +33,7 @@ chmod +x install.sh && ./install.sh
 - ✅ 复制模型配置文件
 - ✅ 自动添加 PATH（Windows）
 - ✅ 同时创建 `cc` 和 `ccs` 命令
+- ✅ 支持上下箭头选择启动模式
 
 > ⚠️ **安装后如果提示 `cc` 或 `ccs` 命令找不到？**
 >
@@ -61,8 +68,21 @@ $ ccs
   4) mini        - MiniMax M2.5
 
 请选择模型 (输入编号或名称): 2
+
+请选择启动模式 (↑↓选择, 回车确认):
+
+  ▶ 1. 普通启动
+    2. dangerously-skip-permissions 启动
+
 🚀 启动 Claude Code [千问 3.5 Plus]...
 ```
+
+选择模型后，用 ↑↓ 方向键切换启动模式，回车确认：
+
+| 模式 | 说明 |
+|------|------|
+| 普通启动 | 标准模式，Claude Code 会请求权限确认 |
+| dangerously-skip-permissions 启动 | 跳过所有权限确认，适合信任的自动化场景 |
 
 ## 支持的模型
 
@@ -140,9 +160,11 @@ cc glm
 方案 A - 复制到系统目录：
 ```bash
 mkdir -p ~/.local/bin
-cp cc ~/.local/bin/cc           # Mac/Linux
-cp cc cc.cmd ~/.local/bin/      # Windows
-# 创建 ccs 链接（可选）
+cp cc ~/.local/bin/cc                        # Mac/Linux
+cp cc.cmd ~/.local/bin/cc.cmd               # Windows
+cp cc ~/.local/bin/ccs                       # Mac/Linux（或建软链接）
+cp ccs.cmd ~/.local/bin/ccs.cmd             # Windows
+# Mac/Linux 也可用软链接代替复制
 ln -sf ~/.local/bin/cc ~/.local/bin/ccs
 ```
 
@@ -192,7 +214,9 @@ claude --settings ~/.claude/models/qwen.json
 ## 依赖
 
 - [Claude Code](https://claude.ai/code) - 安装命令：`curl -fsSL https://claude.ai/install.sh | bash`
-- Git Bash (Windows) 或 Bash (Mac/Linux)
+- Git Bash (Windows) 或 Bash 4.0+ (Mac/Linux)
+  - **macOS**：系统自带 bash 3.2，需通过 Homebrew 安装：`brew install bash`
+  - **Linux**：主流发行版（Ubuntu/Debian/Fedora/CentOS 等）自带 bash 4.x/5.x，无需额外安装
 
 ## Star History
 
