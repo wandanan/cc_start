@@ -17,8 +17,14 @@ else
 fi
 
 CONFIG_DIR="$HOME_DIR/.claude/models"
-CLAUDE_BIN="$(which claude 2>/dev/null || echo "$HOME_DIR/.local/bin/claude")"
 USER_SETTINGS="$HOME_DIR/.claude/settings.json"
+
+# 查找 Claude Code 可执行文件（Windows 下是 claude.exe）
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || -n "$MSYSTEM" ]]; then
+    CLAUDE_BIN="$(which claude.exe 2>/dev/null || which claude 2>/dev/null || echo "$HOME_DIR/.local/bin/claude.exe")"
+else
+    CLAUDE_BIN="$(which claude 2>/dev/null || echo "$HOME_DIR/.local/bin/claude")"
+fi
 
 # 颜色定义
 GREEN='\033[0;32m'
