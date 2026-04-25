@@ -37,14 +37,11 @@ update_json_env() {
     local base_url="$4"
 
     # sed 原生支持 Git Bash Unix 路径，用 # 做分隔符避免 URL 中 / 冲突
+    # 只替换确定存在的字段，不插入新字段，保持用户原有配置结构
     if ! sed -i \
         -e "s#\"ANTHROPIC_AUTH_TOKEN\": \"[^\"]*\"#\"ANTHROPIC_AUTH_TOKEN\": \"${api_key}\"#g" \
         -e "s#\"ANTHROPIC_BASE_URL\": \"[^\"]*\"#\"ANTHROPIC_BASE_URL\": \"${base_url}\"#g" \
         -e "s#\"ANTHROPIC_MODEL\": \"[^\"]*\"#\"ANTHROPIC_MODEL\": \"${model_name}\"#g" \
-        -e "s#\"ANTHROPIC_DEFAULT_HAIKU_MODEL\": \"[^\"]*\"#\"ANTHROPIC_DEFAULT_HAIKU_MODEL\": \"${model_name}\"#g" \
-        -e "s#\"ANTHROPIC_DEFAULT_OPUS_MODEL\": \"[^\"]*\"#\"ANTHROPIC_DEFAULT_OPUS_MODEL\": \"${model_name}\"#g" \
-        -e "s#\"ANTHROPIC_DEFAULT_SONNET_MODEL\": \"[^\"]*\"#\"ANTHROPIC_DEFAULT_SONNET_MODEL\": \"${model_name}\"#g" \
-        -e 's#"includeCoAuthoredBy": [a-z]*#"includeCoAuthoredBy": false#g' \
         "$json_file"; then
         echo -e "${RED}⚠️  更新配置文件失败: $json_file${NC}"
         return 1
@@ -225,13 +222,9 @@ add_model() {
 {
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "$api_key",
-    "ANTHROPIC_BASE_URL": "$base_url",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "$name",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "$name",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "$name",
-    "ANTHROPIC_MODEL": "$name"
+    "ANTHROPIC_BASE_URL": "$base_url"
   },
-  "includeCoAuthoredBy": false
+  "model": "$name"
 }
 EOF
         fi
@@ -554,6 +547,9 @@ show_help() {
 # ─── 主逻辑 ──────────────────────────────────────────────────
 
 main() {
+    # 确保配置目录存在
+    mkdir -p "$CONFIG_DIR" 2>/dev/null || true
+
     # 扫描模型配置
     scan_models "$CONFIG_DIR"
 

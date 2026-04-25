@@ -15,6 +15,49 @@ if not exist "%~dp0cc" (
     exit /b 1
 )
 
+:: Check dependencies
+echo.
+echo Checking dependencies...
+
+:: Check Node.js
+node -v >nul 2>&1
+if errorlevel 1 (
+    echo [WARN] Node.js not found, attempting to install via winget...
+    winget -v >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] winget not available, please install Node.js manually
+        echo Download from: https://nodejs.org/
+        pause
+        exit /b 1
+    )
+    winget install -e --id OpenJS.NodeJS --accept-package-agreements --accept-source-agreements
+    if errorlevel 1 (
+        echo [ERROR] Failed to install Node.js automatically
+        echo Please install manually: https://nodejs.org/
+        pause
+        exit /b 1
+    )
+    echo [OK] Node.js installed
+)
+for /f "tokens=*" %%a in ('node -v') do echo [OK] Node.js: %%a
+
+:: Check Claude Code
+claude --version >nul 2>&1
+if errorlevel 1 (
+    echo.
+    echo [WARN] Claude Code not found, attempting to install via npm...
+    call npm install -g @anthropic-ai/claude-code
+    if errorlevel 1 (
+        echo [ERROR] Failed to install Claude Code
+        echo Please run manually: npm install -g @anthropic-ai/claude-code
+        pause
+        exit /b 1
+    )
+    echo [OK] Claude Code installed
+) else (
+    for /f "tokens=*" %%a in ('claude --version') do echo [OK] Claude Code: %%a
+)
+
 :: Set installation directory
 set "INSTALL_DIR=%USERPROFILE%\.local\bin"
 
@@ -62,6 +105,7 @@ if "%SKIP_SCRIPTS%"=="1" (
     :: Create ccs copy - both cc and ccs are supported
     copy /Y "%~dp0cc" "%INSTALL_DIR%\ccs" >nul
     copy /Y "%~dp0ccs.cmd" "%INSTALL_DIR%\ccs.cmd" >nul
+    copy /Y "%~dp0init.ps1" "%INSTALL_DIR%\init.ps1" >nul
     echo [OK] Scripts installed
     echo [OK] Commands available: 'cc' and 'ccs'
 )
@@ -116,9 +160,18 @@ echo   cc/ccs reset        - Reset all configs
 echo.
 echo Note: Both 'cc' and 'ccs' commands are supported
 echo.
+echo All new terminal windows (CMD / PowerShell) can use cc/ccs directly.
+echo.
+echo For currently open terminals:
+echo   CMD:     Reopen the window
+echo   PowerShell: . "$env:USERPROFILE\.local\bin\init.ps1"
+echo.
+echo Without installation (current directory only):
+echo   PowerShell: . .\init.ps1
+echo.
 echo Config files location:
 echo   %%USERPROFILE%%\.claude\models\
 echo.
-echo [IMPORTANT] Please reopen terminal, then run "cc add" or "ccs add" to add model config
+echo [IMPORTANT] Please run "cc add" or "ccs add" to add model config
 echo.
 pause

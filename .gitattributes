@@ -1,0 +1,4 @@
+# Shell scripts must use LF line endings, even on Windows
+*.sh text eol=lf
+cc   text eol=lf
+ccs  text eol=lf

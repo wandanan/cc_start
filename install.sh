@@ -15,6 +15,94 @@ echo "   CC Start Installer"
 echo "==================================="
 echo ""
 
+# Check dependencies
+echo ""
+echo "Checking dependencies..."
+
+# Check Node.js version (need >= 18)
+NODE_MAJOR=0
+if command -v node >/dev/null 2>&1; then
+    NODE_MAJOR=$(node -v 2>/dev/null | sed 's/v//;s/\..*//')
+fi
+
+needs_install=0
+if [[ -z "$NODE_MAJOR" ]] || [[ "$NODE_MAJOR" == "0" ]]; then
+    echo "[WARN] Node.js not found"
+    needs_install=1
+elif [[ "$NODE_MAJOR" -lt 18 ]]; then
+    echo "[WARN] Node.js v${NODE_MAJOR} is too old, Claude Code requires >= 18"
+    needs_install=1
+fi
+
+if [[ "$needs_install" == "1" ]]; then
+    echo "Attempting to install Node.js 20 via nvm..."
+
+    # Install nvm if not present
+    if ! command -v nvm >/dev/null 2>&1 && [[ ! -s "$HOME/.nvm/nvm.sh" ]]; then
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+    fi
+
+    # Source nvm
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+
+    if ! nvm install 20 >/dev/null 2>&1; then
+        echo "[ERROR] Failed to install Node.js automatically"
+        echo "Please install manually: https://nodejs.org/"
+        exit 1
+    fi
+    nvm use 20 >/dev/null 2>&1
+    nvm alias default 20 >/dev/null 2>&1
+
+    # Force nvm node to front of PATH for this session
+    if [[ -d "$NVM_DIR/versions/node" ]]; then
+        NODE20_BIN=$(find "$NVM_DIR/versions/node" -maxdepth 1 -name "v20*" -type d | head -1)
+        if [[ -n "$NODE20_BIN" ]] && [[ -d "$NODE20_BIN/bin" ]]; then
+            export PATH="$NODE20_BIN/bin:$PATH"
+        fi
+    fi
+
+    # Verify
+    NODE_MAJOR=$(node -v 2>/dev/null | sed 's/v//;s/\..*//')
+    if [[ -z "$NODE_MAJOR" ]] || [[ "$NODE_MAJOR" -lt 18 ]]; then
+        echo "[ERROR] Node.js installed but version still too old or not in PATH"
+        echo "Please restart your terminal and run this installer again"
+        exit 1
+    fi
+    echo "[OK] Node.js installed: $(node -v)"
+else
+    echo "[OK] Node.js: $(node -v)"
+fi
+
+# Check Claude Code (must have working binary, not just shell stub)
+CLAUDE_OK=0
+if command -v claude >/dev/null 2>&1; then
+    CLAUDE_VER=$(claude --version 2>/dev/null) || true
+    if [[ -n "$CLAUDE_VER" ]]; then
+        echo "[OK] Claude Code: $CLAUDE_VER"
+        CLAUDE_OK=1
+    fi
+fi
+
+if [[ "$CLAUDE_OK" == "0" ]]; then
+    echo ""
+    echo "[WARN] Claude Code not found or native binary missing, attempting to install via npm..."
+    if ! npm install -g @anthropic-ai/claude-code; then
+        echo "[ERROR] Failed to install Claude Code"
+        echo "Please run manually: npm install -g @anthropic-ai/claude-code"
+        exit 1
+    fi
+    # Verify again after install
+    CLAUDE_VER=$(claude --version 2>/dev/null) || true
+    if [[ -n "$CLAUDE_VER" ]]; then
+        echo "[OK] Claude Code installed: $CLAUDE_VER"
+    else
+        echo "[WARN] Claude Code installed but native binary may still be missing"
+        echo "  Try running: node node_modules/@anthropic-ai/claude-code/install.cjs"
+    fi
+fi
+
 # Detect install directory
 INSTALL_DIR=""
 
@@ -53,6 +141,8 @@ if [[ "$SKIP_SCRIPTS" == "1" ]]; then
 else
     cp "$SCRIPT_DIR/cc" "$INSTALL_DIR/cc"
     chmod +x "$INSTALL_DIR/cc"
+    # Fix potential CRLF line endings when installing from Windows filesystem
+    sed -i 's/\r$//' "$INSTALL_DIR/cc"
     # Create ccs alias - both cc and ccs are supported
     ln -sf "$INSTALL_DIR/cc" "$INSTALL_DIR/ccs"
     echo -e "${GREEN}[OK] Scripts installed${NC}"
