@@ -10,4 +10,17 @@ if not exist "%BASH%" (
     exit /b 1
 )
 
-"%BASH%" -lic "\"$(cygpath -u '%~dp0cc')\" $*" -- %*
+:: 切换到脚本所在目录，使用相对路径避免 cygpath 中文路径问题
+set "SCRIPT_DIR=%~dp0"
+cd /d "%SCRIPT_DIR%" 2>nul
+if errorlevel 1 (
+    echo Error: Failed to change to script directory
+    exit /b 1
+)
+
+if not exist "cc" (
+    echo Error: cc script not found in %SCRIPT_DIR%
+    exit /b 1
+)
+
+"%BASH%" -li "cc" %*

@@ -10,4 +10,16 @@ if not exist "%BASH%" (
     exit /b 1
 )
 
-"%BASH%" -lic "\"$(cygpath -u '%~dp0ccs')\" $*" -- %*
+set "SCRIPT_DIR=%~dp0"
+cd /d "%SCRIPT_DIR%" 2>nul
+if errorlevel 1 (
+    echo Error: Failed to change to script directory
+    exit /b 1
+)
+
+if not exist "ccs" (
+    echo Error: ccs script not found in %SCRIPT_DIR%
+    exit /b 1
+)
+
+"%BASH%" -li "ccs" %*
