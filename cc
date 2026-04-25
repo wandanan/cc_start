@@ -20,11 +20,23 @@ CONFIG_DIR="$HOME_DIR/.claude/models"
 USER_SETTINGS="$HOME_DIR/.claude/settings.json"
 
 # 查找 Claude Code 可执行文件（Windows 下是 claude.exe）
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || -n "$MSYSTEM" ]]; then
-    CLAUDE_BIN="$(which claude.exe 2>/dev/null || which claude 2>/dev/null || echo "$HOME_DIR/.local/bin/claude.exe")"
-else
-    CLAUDE_BIN="$(which claude 2>/dev/null || echo "$HOME_DIR/.local/bin/claude")"
-fi
+find_claude_bin() {
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || -n "$MSYSTEM" ]]; then
+        if which claude.exe &>/dev/null; then
+            which claude.exe
+        elif which claude &>/dev/null; then
+            which claude
+        elif command -v npx &>/dev/null; then
+            echo "npx @anthropic-ai/claude-code"
+        else
+            echo "$HOME_DIR/.local/bin/claude.exe"
+        fi
+    else
+        which claude 2>/dev/null || echo "$HOME_DIR/.local/bin/claude"
+    fi
+}
+
+CLAUDE_BIN="$(find_claude_bin)"
 
 # 颜色定义
 GREEN='\033[0;32m'
@@ -517,10 +529,12 @@ launch_claude() {
     echo ""
 
     # 使用 --settings 参数直接指定配置文件，避免多窗口冲突
+    # 将 CLAUDE_BIN 拆分为数组，支持 npx 等多词命令
+    read -ra CLAUDE_CMD <<< "$CLAUDE_BIN"
     if [[ $selected -eq 1 ]]; then
-        "$CLAUDE_BIN" --dangerously-skip-permissions --settings "$model_config" "$@"
+        "${CLAUDE_CMD[@]}" --dangerously-skip-permissions --settings "$model_config" "$@"
     else
-        "$CLAUDE_BIN" --settings "$model_config" "$@"
+        "${CLAUDE_CMD[@]}" --settings "$model_config" "$@"
     fi
 }
 
