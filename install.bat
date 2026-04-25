@@ -96,32 +96,10 @@ if exist "%~dp0models" (
     )
 )
 
-:: Check PATH
+:: Check PATH - 使用 PowerShell API 避免 setx 中文路径编码损坏
 echo.
-echo Checking PATH...
-echo %PATH% | find /i "%INSTALL_DIR%" >nul
-if errorlevel 1 (
-    echo.
-    echo [INFO] Adding to user PATH...
-
-    for /f "tokens=2*" %%a in ('reg query HKCU\Environment /v Path 2^>nul ^| findstr Path') do set "USER_PATH=%%b"
-
-    if defined USER_PATH (
-        setx PATH "!USER_PATH!;!INSTALL_DIR!" >nul 2>&1
-    ) else (
-        setx PATH "!INSTALL_DIR!" >nul 2>&1
-    )
-
-    if errorlevel 1 (
-        echo [WARN] Failed to add PATH, please add manually: %INSTALL_DIR%
-    ) else (
-        echo [OK] PATH updated
-    )
-    echo.
-    echo [IMPORTANT] Please reopen terminal to use cc/ccs commands
-) else (
-    echo [OK] PATH check passed
-)
+echo [INFO] Force updating PATH: removing old entry if exists, then re-registering...
+powershell.exe -NoProfile -Command "$d='%INSTALL_DIR%'; $p=[Environment]::GetEnvironmentVariable('Path','User'); $clean=$p -split ';' | Where-Object{$_ -ne '' -and $_ -ne $d}; $new=@($d)+@($clean) -join ';'; [Environment]::SetEnvironmentVariable('Path',$new,'User'); Write-Host '[OK] PATH force updated: removed old entry if exists, then re-registered'; Write-Host '[IMPORTANT] Please reopen terminal to use cc/ccs commands'"
 
 :: Finish
 echo.
