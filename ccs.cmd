@@ -17,4 +17,4 @@ if not exist "%SCRIPT_DIR%ccs" (
     exit /b 1
 )
 
-"%BASH%" -li "%SCRIPT_DIR%ccs" %*
+"%BASH%" -l "%SCRIPT_DIR%ccs" %*

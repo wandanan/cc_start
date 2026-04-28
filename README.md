@@ -1,38 +1,52 @@
 # CC Start
 
-**一条命令完成 Claude Code 全流程安装配置，多模型随心切换，让 Claude Code 上手零门槛。**
+```
+                                __
+  ____  _____  _____  _____ ___/ /_ _____  ___  ___
+ / __/ / ___/ / ___/ / __ `/_  _// ___/ / _ \/ _ \
+/ _/  / /__  / /__  / /_/ / / /_ / /    / .__/\___/
+\__/   \___/  \___/  \__,_/ /_/ \_/     \_/
+```
+
+**一条命令，终结 Claude Code 的上手门槛。多模型，一个工具就够了。**
+
+---
 
 ## 为什么选择 CC Start？
 
-Claude Code 默认只能用 Anthropic 自家的 Claude 模型，想用国产大模型？需要手动折腾环境变量、配置文件，每个窗口还要单独设置，稍不注意就冲突。CC Start 把这些脏活累活一把梭：
+Claude Code 默认只认 Anthropic 自家模型——想用国产大模型？环境变量、配置文件、每个窗口各自为战，稍不留神全面冲突。
 
-- **一条命令装好一切** — 自动检测并安装 Node.js、Claude Code，复制脚本到 PATH，开箱即用
-- **多模型无缝切换** — `cc kimi`、`cc qwen`、`cc glm`、`cc mini`，一条命令换模型，比切歌还简单
-- **多窗口独立运行** — 每个窗口独立配置互不干扰，同时开 4 个终端用 4 个模型毫无压力
-- **任意模型随心加** — `cc add` 三步添加任何兼容 Claude API 的模型，不限品牌不限数量
-- **全平台覆盖** — Windows / macOS / Linux 统一体验，CMD、PowerShell、Bash 全支持
+CC Start 让你彻底告别这些折腾：
+
+| | |
+|---|---|
+| 🚀 **一条命令装好一切** | 自动检测 & 安装 Node.js、Claude Code，脚本直达 PATH，安装即用，零手动 |
+| 🎯 **多模型无缝切换** | `cc kimi` → `cc qwen` → `cc glm` — 一条命令换模型，比切歌还流畅 |
+| 🪟 **多窗口独立运行** | 每个终端独立配置互不干扰，4 个窗口跑 4 个模型，随心所欲 |
+| ➕ **任意模型随心加** | `cc add` 三步上手，兼容任何 Claude API 服务，不挑品牌不限数量 |
+| 🌍 **全平台统一体验** | Windows / macOS / Linux 通吃，CMD、PowerShell、Bash 全支持 |
 
 ## 一分钟安装
 
 ```bash
-# 克隆项目
-git clone https://github.com/wandanan/cc_start.git
-cd cc_start
+git clone https://github.com/wandanan/cc_start.git && cd cc_start
 
-# Windows: 双击运行
+# Windows → 双击运行
 install.bat
 
-# Mac / Linux: 一条命令搞定
+# Mac / Linux → 终端执行
 chmod +x install.sh && ./install.sh
 ```
 
-安装脚本会自动完成：
+安装脚本自动完成：
 
-- ✅ 检测并自动安装 Node.js / Claude Code（缺失时）
-- ✅ 复制启动脚本到系统 PATH
-- ✅ 创建配置目录，预置模型配置模板
-- ✅ 自动注册 `cc` 和 `ccs` 两个命令
-- ✅ Windows 自动配置 PATH，无需手动操作
+```
+✅ 检测 & 自动安装 Node.js / Claude Code（缺失时）
+✅ 复制启动脚本到系统 PATH
+✅ 创建配置目录，预置模型配置模板
+✅ 自动注册 cc 和 ccs 两个命令
+✅ Windows 自动配置 PATH，无需手动操作
+```
 
 > **macOS 用户注意**：系统自带 bash 版本为 3.2，不支持关联数组。请先通过 Homebrew 安装新版 bash：
 > ```bash
@@ -83,48 +97,42 @@ $ cc
 
 ## 命令详解
 
-```bash
-cc / ccs              交互式选择模型启动（↑↓ 方向键 + 回车）
-cc <模型名>            直接启动指定模型
-cc add                添加新模型配置（三步：名称、API Key、Base URL）
-cc edit [模型名]       编辑已有模型配置
-cc remove [模型名]     删除模型配置
-cc ls                 列出所有已配置模型
-cc sync [模型名]       同步当前 MCP/插件配置到指定模型
-cc reset              清空所有模型配置
-cc -h                 查看帮助
-```
+| 命令 | 说明 |
+|---|---|
+| `cc` | 交互式选择模型启动（↑↓ 方向键 + 回车确认） |
+| `cc <模型名>` | 跳过菜单，直接启动指定模型 |
+| `cc add` | 添加新模型配置（三步走：名称 → Key → URL） |
+| `cc edit [模型名]` | 编辑已有模型配置 |
+| `cc remove [模型名]` | 删除模型配置 |
+| `cc ls` | 列出所有已配置模型 |
+| `cc sync [模型名]` | 同步当前 MCP/插件配置到指定模型 |
+| `cc reset` | 清空所有模型配置 |
+| `cc -h` | 查看帮助 |
 
-> `cc` 和 `ccs` 完全等价。Linux 系统默认有 C 编译器 `/usr/bin/cc`，若需区分可使用 `ccs`。
+> 💡 `cc` 和 `ccs` 完全等价。Linux 系统默认有 `/usr/bin/cc`（C 编译器），若需区分使用 `ccs` 即可。
 
 ## 支持的模型
 
-预置 4 个国产大模型配置模板，填入 API Key 即可使用：
+预置 4 个国产大模型配置模板，填入 API Key 即刻启动：
 
-| 命令 | 模型 | 提供商 |
-|------|------|--------|
-| `cc kimi` | Kimi K2.5 | Moonshot |
-| `cc qwen` | 千问 3.5 Plus | Alibaba |
-| `cc glm` | GLM 5 | Zhipu |
-| `cc mini` | MiniMax M2.5 | MiniMax |
-| `cc <自定义>` | 任意模型 | 任意兼容 Claude API 的服务 |
+| | 命令 | 模型 | 提供商 |
+|---|---|---|---|
+| 🔵 | `cc kimi` | Kimi K2.5 | Moonshot |
+| 🟢 | `cc qwen` | 千问 3.5 Plus | Alibaba |
+| 🟣 | `cc glm` | GLM 5 | Zhipu |
+| 🟠 | `cc mini` | MiniMax M2.5 | MiniMax |
+| ⚪ | `cc <自定义>` | 任意模型 | 任意兼容 Claude API 的服务 |
 
 ```bash
-# 多窗口同时使用不同模型
-# 终端 1
-cc kimi
+# 打开 4 个终端，各跑各的
 
-# 终端 2
-cc qwen
-
-# 终端 3
-cc glm
-
-# 终端 4
-cc mini
+终端 1 > cc kimi     # Kimi K2.5
+终端 2 > cc qwen     # 千问 3.5 Plus
+终端 3 > cc glm      # GLM 5
+终端 4 > cc mini     # MiniMax M2.5
 ```
 
-每个窗口独立运行，互不影响。
+> 🔒 每个窗口独立配置，互不干扰，互不打架。
 
 ## 添加你自己的模型
 
@@ -176,6 +184,8 @@ MIT
 
 ---
 
-如果这个项目对你有帮助，欢迎给个 ⭐ Star！
+<p align="center">
+  <b>如果这个项目对你有帮助，点个 ⭐ Star 就是最大的鼓励！</b>
+</p>
 
 [![Star History Chart](https://api.star-history.com/svg?repos=wandanan/cc_start&type=Date)](https://star-history.com/#wandanan/cc_start&Date)

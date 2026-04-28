@@ -39,11 +39,33 @@ find_claude_bin() {
 CLAUDE_BIN="$(find_claude_bin)"
 
 # 颜色定义
-GREEN='\033[0;32m'
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
+CYA='\033[0;36m'
+BLUE='\033[0;34m'; BLU="$BLUE"
+GREEN='\033[0;32m'; GRN="$GREEN"
+YELLOW='\033[1;33m'; YLW="$YELLOW"
 RED='\033[0;31m'
+BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m'
+
+# 品牌 Banner
+show_banner() {
+    echo -e "${CYA}"
+    echo '   ┌──────────────────────────┐'
+    echo '   │  .d8888b.   .d8888b.     │'
+    echo '   │ d88P  Y88b d88P  Y88b    │'
+    echo '   │ 888    888 Y88b.         │'
+    echo '   │ 888    888  "Y888b.      │'
+    echo '   │ 888    888     "Y88b.    │'
+    echo '   │ 888    888       "888    │'
+    echo '   │ Y88b  d88P Y88b  d88P    │'
+    echo '   │  "Y8888P"   "Y8888P"     │'
+    echo '   │          START            │'
+    echo '   └──────────────────────────┘'
+    echo -e "${NC}"
+    echo -e "${BOLD}  多模型，一个工具就够了${NC}"
+    echo ""
+}
 
 # ─── 工具函数 ────────────────────────────────────────────────
 
@@ -113,7 +135,7 @@ select_model() {
     SELECTED_MODEL=""
 
     if [[ ${#MODELS[@]} -eq 0 ]]; then
-        echo -e "${YELLOW}⚠️  没有已配置的模型，请先使用 ${CMD_NAME} add 添加${NC}"
+        echo -e "${YELLOW}⚠  没有已配置的模型，请先使用 ${CMD_NAME} add 添加${NC}"
         return 1
     fi
 
@@ -121,15 +143,15 @@ select_model() {
     local keys=()
     for key in "${!MODELS[@]}"; do
         keys+=("$key")
-        printf "  ${GREEN}%d)${NC} %-12s - %s\n" "$i" "$key" "${MODEL_DESCS[$key]}"
+        printf "  ${GREEN}%d)${NC}  %-14s %s\n" "$i" "$key" "${MODEL_DESCS[$key]}"
         ((i++))
     done
-    echo -e "  ${YELLOW}q)${NC} 取消"
+    echo -e "  ${YELLOW}q)${NC}  取消"
     echo ""
 
-    read -e -p "$prompt (编号/名称): " choice
+    read -e -p "  ${prompt} (编号/名称): " choice
     if [[ -z "$choice" ]]; then
-        echo -e "${RED}无效选择${NC}"
+        echo -e "${RED}  无效选择${NC}"
         return 1
     fi
     if [[ "$choice" == "q" || "$choice" == "Q" ]]; then
@@ -146,7 +168,7 @@ select_model() {
         return 0
     fi
 
-    echo -e "${RED}无效选择${NC}"
+    echo -e "${RED}  无效选择${NC}"
     return 1
 }
 
@@ -154,36 +176,48 @@ select_model() {
 
 # 显示菜单（启动用）
 show_menu() {
+    show_banner
+    echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+    echo -e "${BLU}║     请选择模型                    ║${NC}"
+    echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║     Claude Code 模型选择器         ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
-    echo ""
+
     local i=1
-    for key in "${!MODELS[@]}"; do
-        printf "  ${GREEN}%d)${NC} %-12s - %s\n" "$i" "$key" "${MODEL_DESCS[$key]}"
+    local sorted_keys=()
+
+    while IFS= read -r line; do
+        sorted_keys+=("$line")
+    done < <(for k in "${!MODELS[@]}"; do echo "$k"; done | sort)
+
+    for key in "${sorted_keys[@]}"; do
+        printf "  ${GREEN}%d)${NC}  %-14s %s\n" "$i" "$key" "${MODEL_DESCS[$key]}"
         eval "MODEL_$i=$key"
         ((i++))
     done
+
     echo ""
-    echo -e "  ${YELLOW}q)${NC} 退出"
+    echo -e "  ${YELLOW}q)${NC}  退出"
+    echo -e "  ${YELLOW}a)${NC}  添加新模型"
+    echo -e "  ${YELLOW}h)${NC}  查看帮助"
     echo ""
 }
 
 # 列出所有模型
 list_models() {
     if [[ ${#MODELS[@]} -eq 0 ]]; then
-        echo -e "${YELLOW}没有已配置的模型${NC}"
+        echo -e "${YELLOW}⚠  没有已配置的模型，使用 ${CMD_NAME} add 添加${NC}"
         return 0
     fi
 
     echo ""
-    echo -e "${BLUE}已配置的模型:${NC}"
+    echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+    echo -e "${BLU}║     已配置的模型                  ║${NC}"
+    echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
     echo ""
-    printf "  ${GREEN}%-15s${NC} %s\n" "名称" "模型 ID"
-    printf "  %s %s\n" "---------------" "--------------------"
+    printf "  ${BOLD}%-16s %s${NC}\n" "命令名称" "模型 ID"
+    printf "  ${DIM}%-16s %s${NC}\n" "────────────────" "────────────────────"
     for key in "${!MODELS[@]}"; do
-        printf "  %-15s %s\n" "$key" "${MODEL_DESCS[$key]}"
+        printf "  ${GREEN}%-16s${NC} %s\n" "$key" "${MODEL_DESCS[$key]}"
     done
     echo ""
 }
@@ -192,67 +226,76 @@ list_models() {
 add_model() {
     while true; do
         echo ""
-        echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-        echo -e "${BLUE}║     添加新模型配置                 ║${NC}"
-        echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+        echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+        echo -e "${BLU}║     添加新模型                    ║${NC}"
+        echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
         echo ""
-        echo "说明:"
-        echo "  • 启动命令名称: 用于输入 ${CMD_NAME} <名称> 启动模型"
-        echo "  • Claude Code 界面显示使用的模型名: 如 kimi-k2.5"
+        echo -e "  ${DIM}三步完成配置，之后用 ${CMD_NAME} <名称> 直接启动${NC}"
         echo ""
+        echo -e "  ${BOLD}第 1 步 / 4${NC}  ${DIM}─  设置启动命令名称${NC}"
 
-        read -e -p "启动命令名称 (如 kimi，则使用 ${CMD_NAME} kimi 启动): " alias
+        read -e -p "    启动命令名称 (如 kimi): " alias
         if [[ -z "$alias" ]]; then
-            echo -e "${RED}别名不能为空${NC}"
+            echo -e "  ${RED}✗ 名称不能为空${NC}"
             continue
         fi
 
         # 检查是否已存在
         if [[ -f "$CONFIG_DIR/${alias}.json" ]]; then
-            echo -e "${YELLOW}⚠️  模型 '$alias' 已存在${NC}"
-            read -e -p "是否覆盖? (y/N): " confirm
+            echo -e "  ${YELLOW}⚠  模型 '${alias}' 已存在${NC}"
+            read -e -p "    是否覆盖? (y/N): " confirm
             [[ "$confirm" != "y" && "$confirm" != "Y" ]] && return 1
         fi
 
-        read -e -p "Claude Code 使用的模型名ID (如 kimi-k2.5): " name
+        echo ""
+        echo -e "  ${BOLD}第 2 步 / 4${NC}  ${DIM}─  设置模型 ID${NC}"
+
+        read -e -p "    模型 ID (如 kimi-k2.5): " name
         [[ -z "$name" ]] && name="$alias"
 
-        read -e -p "API Key: " api_key
+        echo ""
+        echo -e "  ${BOLD}第 3 步 / 4${NC}  ${DIM}─  设置 API Key${NC}"
+
+        read -e -p "    API Key: " api_key
         if [[ -z "$api_key" ]]; then
-            echo -e "${RED}API Key 不能为空${NC}"
+            echo -e "  ${RED}✗ API Key 不能为空${NC}"
             continue
         fi
 
-        read -e -p "Base URL (如 https://api.kimi.com/coding/): " base_url
+        echo ""
+        echo -e "  ${BOLD}第 4 步 / 4${NC}  ${DIM}─  设置 API 地址${NC}"
+
+        read -e -p "    Base URL (如 https://api.kimi.com/coding/): " base_url
         if [[ -z "$base_url" ]]; then
-            echo -e "${RED}Base URL 不能为空${NC}"
+            echo -e "  ${RED}✗ Base URL 不能为空${NC}"
             continue
         fi
 
-        # 确认信息
+        # 确认
         echo ""
-        echo -e "${BLUE}── 配置确认 ──────────────────────${NC}"
-        echo "  命令名称:  ${CMD_NAME} $alias"
-        echo "  模型 ID:   $name"
-        echo "  API Key:   ${api_key:0:8}...${api_key: -4}"
-        echo "  Base URL:  $base_url"
+        echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+        echo -e "${BLU}║     确认配置                      ║${NC}"
+        echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
         echo ""
-        read -e -p "确认保存? (Y/n/r 重填): " action
+        echo -e "  命令名称:  ${GREEN}${CMD_NAME} ${alias}${NC}"
+        echo -e "  模型 ID:   ${name}"
+        echo -e "  API Key:   ${api_key:0:8}${DIM}...${NC}${api_key: -4}"
+        echo -e "  Base URL:  ${base_url}"
+        echo ""
+        read -e -p "  确认保存? (Y/n/r 重填): " action
         if [[ "$action" == "r" || "$action" == "R" ]]; then
-            echo -e "${YELLOW}重新填写...${NC}"
+            echo -e "${YELLOW}  重新填写...${NC}"
             continue
         elif [[ "$action" == "n" || "$action" == "N" ]]; then
-            echo "取消添加"
+            echo "  已取消"
             return 1
         fi
 
-        # 创建配置文件 - 基于现有 settings.json（保留 MCP、插件等配置）
+        # 创建配置文件
         if [[ -f "$USER_SETTINGS" ]]; then
             cp "$USER_SETTINGS" "$CONFIG_DIR/${alias}.json"
-            echo -e "${GREEN}📋 已基于当前配置文件创建副本，保留 MCP、插件等设置${NC}"
             update_json_env "$CONFIG_DIR/${alias}.json" "$name" "$api_key" "$base_url"
         else
-            echo -e "${YELLOW}⚠️  未找到现有配置文件，将创建最小配置${NC}"
             cat > "$CONFIG_DIR/${alias}.json" << EOF
 {
   "ANTHROPIC_AUTH_TOKEN": "$api_key",
@@ -263,12 +306,12 @@ EOF
         fi
 
         echo ""
-        echo -e "${GREEN}✅ 模型 '$name' 添加成功!${NC}"
-        echo "配置文件: $CONFIG_DIR/${alias}.json"
+        echo -e "  ${GREEN}✓ 模型 '${name}' 添加成功!${NC}"
+        echo -e "  ${DIM}配置文件:${NC} ~/.claude/models/${alias}.json"
         echo ""
-        echo "使用方法:"
-        echo "  ${CMD_NAME} $alias        # 直接启动"
-        echo "  ${CMD_NAME}               # 从菜单选择"
+        echo -e "  ${BOLD}使用方法:${NC}"
+        echo -e "    ${GRN}${CMD_NAME} ${alias}${NC}        # 直接启动"
+        echo -e "    ${GRN}${CMD_NAME}${NC}               # 从菜单选择"
         return 0
     done
 }
@@ -277,12 +320,11 @@ EOF
 edit_model() {
     local model="$1"
 
-    # 如果没指定模型，交互选择
     if [[ -z "$model" ]]; then
         echo ""
-        echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-        echo -e "${BLUE}║     编辑模型配置                   ║${NC}"
-        echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+        echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+        echo -e "${BLU}║     编辑模型配置                  ║${NC}"
+        echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
         echo ""
         if ! select_model "选择要编辑的模型"; then
             return 1
@@ -292,63 +334,59 @@ edit_model() {
 
     local model_config="$CONFIG_DIR/${model}.json"
     if [[ ! -f "$model_config" ]]; then
-        echo -e "${RED}⚠️  模型 '$model' 不存在${NC}"
+        echo -e "${RED}✗ 模型 '$model' 不存在${NC}"
         return 1
     fi
 
-    # 读取当前值
     local cur_name=$(read_json_field "$model_config" "ANTHROPIC_MODEL")
     local cur_key=$(read_json_field "$model_config" "ANTHROPIC_AUTH_TOKEN")
     local cur_url=$(read_json_field "$model_config" "ANTHROPIC_BASE_URL")
 
     echo ""
-    echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║     编辑模型: $model"
-    echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+    echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+    echo -e "${BLU}║     编辑模型: ${model}$(printf '%*s' $((24 - ${#model})) '')║${NC}"
+    echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${YELLOW}提示: 直接回车保留当前值${NC}"
+    echo -e "  ${DIM}直接回车保留当前值${NC}"
     echo ""
 
-    read -e -p "模型 ID [$cur_name]: " name
+    read -e -p "  模型 ID [${cur_name}]: " name
     [[ -z "$name" ]] && name="$cur_name"
 
-    read -e -p "API Key [${cur_key:0:8}...${cur_key: -4}]: " api_key
+    read -e -p "  API Key [${cur_key:0:8}...${cur_key: -4}]: " api_key
     [[ -z "$api_key" ]] && api_key="$cur_key"
 
-    read -e -p "Base URL [$cur_url]: " base_url
+    read -e -p "  Base URL [${cur_url}]: " base_url
     [[ -z "$base_url" ]] && base_url="$cur_url"
 
-    # 确认
     echo ""
-    echo -e "${BLUE}── 修改确认 ──────────────────────${NC}"
-    echo "  模型 ID:   $name"
-    echo "  API Key:   ${api_key:0:8}...${api_key: -4}"
-    echo "  Base URL:  $base_url"
+    echo -e "  ${BOLD}确认修改:${NC}"
+    echo -e "    模型 ID:   ${name}"
+    echo -e "    API Key:   ${api_key:0:8}${DIM}...${NC}${api_key: -4}"
+    echo -e "    Base URL:  ${base_url}"
     echo ""
-    read -e -p "确认保存? (Y/n): " confirm
+    read -e -p "  确认保存? (Y/n): " confirm
     if [[ "$confirm" == "n" || "$confirm" == "N" ]]; then
-        echo "取消修改"
+        echo "  已取消"
         return 1
     fi
 
     update_json_env "$model_config" "$name" "$api_key" "$base_url"
-    # 更新描述
     MODEL_DESCS["$model"]="$name"
 
     echo ""
-    echo -e "${GREEN}✅ 模型 '$model' 已更新${NC}"
+    echo -e "  ${GREEN}✓ 模型 '${model}' 已更新${NC}"
 }
 
 # 删除指定模型
 remove_model() {
     local model="$1"
 
-    # 没指定模型，交互选择
     if [[ -z "$model" ]]; then
         echo ""
-        echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-        echo -e "${BLUE}║     删除模型配置                   ║${NC}"
-        echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+        echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+        echo -e "${BLU}║     删除模型配置                  ║${NC}"
+        echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
         echo ""
         if ! select_model "选择要删除的模型"; then
             return 1
@@ -358,19 +396,19 @@ remove_model() {
 
     local model_config="$CONFIG_DIR/${model}.json"
     if [[ ! -f "$model_config" ]]; then
-        echo -e "${RED}⚠️  模型 '$model' 不存在${NC}"
+        echo -e "${RED}✗ 模型 '$model' 不存在${NC}"
         return 1
     fi
 
     echo ""
-    echo -e "${BLUE}── 删除确认 ──────────────────────${NC}"
-    echo "  模型: $model"
-    echo "  描述: ${MODEL_DESCS[$model]}"
-    echo "  文件: $model_config"
+    echo -e "  ${BOLD}确认删除:${NC}"
+    echo -e "    命令名称:  ${RED}${model}${NC}"
+    echo -e "    模型 ID:   ${MODEL_DESCS[$model]}"
+    echo -e "    配置文件:  ${DIM}${model_config}${NC}"
     echo ""
-    read -e -p "确定要删除吗? (y/N): " confirm
+    read -e -p "  ${RED}确定删除? (y/N):${NC} " confirm
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-        echo "取消删除"
+        echo "  已取消"
         return 1
     fi
 
@@ -378,27 +416,25 @@ remove_model() {
     unset "MODELS[$model]"
     unset "MODEL_DESCS[$model]"
     echo ""
-    echo -e "${GREEN}✅ 模型 '$model' 已删除${NC}"
+    echo -e "  ${GREEN}✓ 模型 '${model}' 已删除${NC}"
 }
 
-# 同步模型配置（用当前 settings.json 更新 MCP/插件等，保留模型的 env）
+# 同步模型配置
 sync_model() {
     local model="$1"
 
     if [[ ! -f "$USER_SETTINGS" ]]; then
-        echo -e "${RED}⚠️  未找到当前配置文件: $USER_SETTINGS${NC}"
-        echo "请先启动一次 Claude Code 生成配置文件"
+        echo -e "${RED}✗ 未找到当前配置文件: ${USER_SETTINGS}${NC}"
+        echo "  请先启动一次 Claude Code 生成配置文件"
         return 1
     fi
 
-    # 没指定模型，交互选择
     if [[ -z "$model" ]]; then
         echo ""
-        echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-        echo -e "${BLUE}║     同步模型配置                   ║${NC}"
-        echo -e "${BLUE}║     从当前 settings.json 同步      ║${NC}"
-        echo -e "${BLUE}║     MCP/插件等到指定模型            ║${NC}"
-        echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+        echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+        echo -e "${BLU}║     同步模型配置                  ║${NC}"
+        echo -e "${BLU}║     MCP / 插件 → 指定模型         ║${NC}"
+        echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
         echo ""
         if ! select_model "选择要同步的模型"; then
             return 1
@@ -408,38 +444,37 @@ sync_model() {
 
     local model_config="$CONFIG_DIR/${model}.json"
     if [[ ! -f "$model_config" ]]; then
-        echo -e "${RED}⚠️  模型 '$model' 不存在${NC}"
+        echo -e "${RED}✗ 模型 '$model' 不存在${NC}"
         return 1
     fi
 
-    # 读取模型当前的 env 配置
     local cur_name=$(read_json_field "$model_config" "ANTHROPIC_MODEL")
     local cur_key=$(read_json_field "$model_config" "ANTHROPIC_AUTH_TOKEN")
     local cur_url=$(read_json_field "$model_config" "ANTHROPIC_BASE_URL")
 
-    # 用当前 settings.json 覆盖，然后注入回模型的 env
     cp "$USER_SETTINGS" "$model_config"
     update_json_env "$model_config" "$cur_name" "$cur_key" "$cur_url"
 
     echo ""
-    echo -e "${GREEN}✅ 模型 '$model' 已同步${NC}"
-    echo "  MCP 服务器、插件等配置已从当前 settings.json 更新"
-    echo "  模型的 API 信息已保留: $cur_name @ $cur_url"
+    echo -e "  ${GREEN}✓ 模型 '${model}' 已同步${NC}"
+    echo -e "  ${DIM}MCP / 插件配置已更新，API 信息已保留${NC}"
+    echo -e "  ${DIM}${cur_name} @ ${cur_url}${NC}"
 }
 
 # 重置所有配置
 reset_models() {
     echo ""
-    echo -e "${BLUE}╔════════════════════════════════════╗${NC}"
-    echo -e "${BLUE}║     重置所有模型配置               ║${NC}"
-    echo -e "${BLUE}╚════════════════════════════════════╝${NC}"
+    echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+    echo -e "${BLU}║     重置所有模型配置              ║${NC}"
+    echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
     echo ""
-    echo "配置目录: $CONFIG_DIR"
-    echo "即将删除: $CONFIG_DIR/*.json"
+    echo -e "  ${RED}警告: 此操作将删除所有模型配置文件${NC}"
+    echo -e "  ${DIM}配置目录: ${CONFIG_DIR}${NC}"
     echo ""
-    read -e -p "确定要重置吗? (yes/no): " confirm
+
+    read -e -p "  确认重置? 输入 yes 继续: " confirm
     if [[ "$confirm" != "yes" ]]; then
-        echo "取消重置"
+        echo "  已取消"
         return 1
     fi
 
@@ -447,15 +482,12 @@ reset_models() {
     count=$(find "$CONFIG_DIR" -maxdepth 1 -name "*.json" -type f -print 2>/dev/null | wc -l)
     if [[ $count -gt 0 ]]; then
         find "$CONFIG_DIR" -maxdepth 1 -name "*.json" -type f -exec rm {} \; 2>/dev/null
-        echo "已删除 $count 个配置文件"
-    else
-        echo "没有需要删除的配置文件"
     fi
 
     echo ""
-    echo -e "${GREEN}✅ 已删除 $count 个模型配置文件${NC}"
+    echo -e "  ${GREEN}✓ 已删除 ${count} 个配置文件${NC}"
     echo ""
-    echo "请使用 ${CMD_NAME} add 重新添加模型配置"
+    echo -e "  ${DIM}使用 ${CMD_NAME} add 重新添加模型${NC}"
 }
 
 # 启动 Claude
@@ -562,12 +594,19 @@ launch_claude() {
     fi
 
     echo ""
-    echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"
+    echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+    echo -e "${BLU}║     启动 Claude Code              ║${NC}"
+    echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "  ${GREEN}▶${NC} 模型: ${BOLD}${MODEL_DESCS[$model]}${NC}"
     if [[ -n "$model_id" ]]; then
-        echo -e "${BLUE}   模型: ${model_id}${NC}"
+        echo -e "  ${DIM}  ID: ${model_id}${NC}"
     fi
     if [[ -n "$base_url" ]]; then
-        echo -e "${BLUE}   代理: ${base_url}${NC}"
+        echo -e "  ${DIM}  URL: ${base_url}${NC}"
+    fi
+    if [[ $selected -eq 1 ]]; then
+        echo -e "  ${DIM}  模式: dangerously-skip-permissions${NC}"
     fi
     echo ""
 
@@ -584,27 +623,29 @@ launch_claude() {
 # ─── 帮助 ────────────────────────────────────────────────────
 
 show_help() {
-    echo "Claude Code 多模型启动器"
+    show_banner
+    echo -e "  ${BOLD}用法:${NC}"
     echo ""
-    echo "用法:"
-    echo "  ${CMD_NAME}                    - 交互式选择模型启动"
-    echo "  ${CMD_NAME} <模型名>           - 直接启动指定模型"
-    echo "  ${CMD_NAME} ls, list           - 列出所有已配置模型"
-    echo "  ${CMD_NAME} add                - 添加新模型配置"
-    echo "  ${CMD_NAME} edit [模型名]      - 编辑模型配置（不传参交互选择）"
-    echo "  ${CMD_NAME} remove [模型名]    - 删除模型配置（不传参交互选择）"
-    echo "  ${CMD_NAME} sync [模型名]      - 同步当前 MCP/插件配置到模型"
-    echo "  ${CMD_NAME} reset              - 重置所有配置"
-    echo "  ${CMD_NAME} -h, --help         - 显示帮助"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME}" "交互式选择模型启动"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} <模型名>" "直接启动指定模型"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} ls" "列出所有已配置模型"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} add" "添加新模型配置"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} edit [模型名]" "编辑已有模型配置"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} remove [模型名]" "删除模型配置"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} sync [模型名]" "同步 MCP/插件到指定模型"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} reset" "重置所有配置"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} -h" "显示此帮助"
     echo ""
     if [[ ${#MODELS[@]} -gt 0 ]]; then
-        echo "已配置的模型:"
+        echo -e "  ${BOLD}已配置的模型:${NC}"
+        echo ""
         for key in "${!MODELS[@]}"; do
-            echo "  $key - ${MODEL_DESCS[$key]}"
+            printf "  ${GREEN}·${NC} %-16s %s\n" "$key" "${MODEL_DESCS[$key]}"
         done
     else
-        echo "${YELLOW}暂无已配置的模型，使用 ${CMD_NAME} add 添加${NC}"
+        echo -e "  ${YELLOW}暂无已配置的模型，使用 ${CMD_NAME} add 添加${NC}"
     fi
+    echo ""
 }
 
 # ─── 主逻辑 ──────────────────────────────────────────────────
@@ -618,24 +659,37 @@ main() {
 
     # 无参数：显示帮助 + 进入交互菜单
     if [[ -z "$1" ]]; then
-        show_help
-        echo ""
         # 进入交互选择
         while true; do
             show_menu
-            read -e -p "请选择模型 (输入编号或名称): " choice
+            read -e -p "  请输入编号或名称 (q=退出 a=添加 h=帮助): " choice
 
-            # 空输入直接跳过，避免 MODELS: bad array subscript
             if [[ -z "$choice" ]]; then
-                echo -e "${RED}请输入选项${NC}"
+                echo -e "${RED}  请输入选项${NC}"
                 echo ""
+                read -p "  按回车继续..."
                 continue
             fi
 
-            if [[ "$choice" == "q" || "$choice" == "Q" ]]; then
-                echo "再见!"
-                exit 0
-            fi
+            case "$choice" in
+                q|Q)
+                    echo -e "  ${DIM}再见!${NC}"
+                    exit 0
+                    ;;
+                a|A)
+                    add_model
+                    scan_models "$CONFIG_DIR"
+                    echo ""
+                    read -p "  按回车继续..."
+                    continue
+                    ;;
+                h|H)
+                    show_help
+                    echo ""
+                    read -p "  按回车继续..."
+                    continue
+                    ;;
+            esac
 
             if [[ "$choice" =~ ^[0-9]+$ ]]; then
                 eval "selected=\$MODEL_$choice"
@@ -643,17 +697,17 @@ main() {
                     launch_claude "$selected"
                     exit $?
                 else
-                    echo -e "${RED}无效选择${NC}"
+                    echo -e "${RED}  无效选择${NC}"
                 fi
             elif [[ -n "${MODELS[$choice]}" ]]; then
                 launch_claude "$choice"
                 exit $?
             else
-                echo -e "${RED}未知选项: $choice${NC}"
+                echo -e "${RED}  未知选项: $choice${NC}"
             fi
 
             echo ""
-            read -p "按回车继续..."
+            read -p "  按回车继续..."
         done
     fi
 
@@ -695,9 +749,10 @@ main() {
                 launch_claude "$model" "$@"
                 exit $?
             else
-                echo -e "${RED}未知命令或模型: $model${NC}"
                 echo ""
-                show_help
+                echo -e "  ${RED}✗ 未知命令或模型: ${BOLD}${model}${NC}"
+                echo ""
+                echo -e "  ${DIM}使用 ${CMD_NAME} -h 查看帮助${NC}"
                 exit 1
             fi
             ;;
