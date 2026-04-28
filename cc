@@ -47,20 +47,37 @@ NC='\033[0m'
 
 # ─── 工具函数 ────────────────────────────────────────────────
 
-# 使用 sed 更新 JSON 配置中的 env 字段（不依赖 Python，无需路径转换）
+# 更新 JSON 配置文件中的 API 字段（awk 处理插入，比 sed 更健壮）
 update_json_env() {
     local json_file="$1"
     local model_name="$2"
     local api_key="$3"
     local base_url="$4"
+    local tmpfile="${json_file}.tmp"
 
-    # sed 原生支持 Git Bash Unix 路径，用 # 做分隔符避免 URL 中 / 冲突
-    # 只替换确定存在的字段，不插入新字段，保持用户原有配置结构
-    if ! sed -i \
-        -e "s#\"ANTHROPIC_AUTH_TOKEN\": \"[^\"]*\"#\"ANTHROPIC_AUTH_TOKEN\": \"${api_key}\"#g" \
-        -e "s#\"ANTHROPIC_BASE_URL\": \"[^\"]*\"#\"ANTHROPIC_BASE_URL\": \"${base_url}\"#g" \
-        -e "s#\"ANTHROPIC_MODEL\": \"[^\"]*\"#\"ANTHROPIC_MODEL\": \"${model_name}\"#g" \
-        "$json_file"; then
+    # 先尝试替换已存在的字段
+    sed -i         -e "s#\"ANTHROPIC_AUTH_TOKEN\": \"[^\"]*\"#\"ANTHROPIC_AUTH_TOKEN\": \"${api_key}\"#g"         -e "s#\"ANTHROPIC_BASE_URL\": \"[^\"]*\"#\"ANTHROPIC_BASE_URL\": \"${base_url}\"#g"         -e "s#\"ANTHROPIC_MODEL\": \"[^\"]*\"#\"ANTHROPIC_MODEL\": \"${model_name}\"#g"         "$json_file" 2>/dev/null || true
+
+    # 对于不存在的字段，在最后一个 } 前插入（使用 awk，Git Bash 自带）
+    for pair in "ANTHROPIC_AUTH_TOKEN:${api_key}" "ANTHROPIC_BASE_URL:${base_url}" "ANTHROPIC_MODEL:${model_name}"; do
+        local key="${pair%%:*}"
+        local val="${pair#*:}"
+        if ! grep -q "\"$key\":" "$json_file" 2>/dev/null; then
+            awk -v k="$key" -v v="$val" '''
+                { lines[NR] = $0 }
+                END {
+                    for (i = 1; i <= NR; i++) {
+                        if (i == NR && lines[i] ~ /^[[:space:]]*}/) {
+                            print "  \"" k "\": \"" v "\","
+                        }
+                        print lines[i]
+                    }
+                }
+            ''' "$json_file" > "$tmpfile" && mv "$tmpfile" "$json_file"
+        fi
+    done
+
+    if ! grep -q "\"ANTHROPIC_AUTH_TOKEN\":" "$json_file" 2>/dev/null; then
         echo -e "${RED}⚠️  更新配置文件失败: $json_file${NC}"
         return 1
     fi
@@ -238,11 +255,9 @@ add_model() {
             echo -e "${YELLOW}⚠️  未找到现有配置文件，将创建最小配置${NC}"
             cat > "$CONFIG_DIR/${alias}.json" << EOF
 {
-  "env": {
-    "ANTHROPIC_AUTH_TOKEN": "$api_key",
-    "ANTHROPIC_BASE_URL": "$base_url"
-  },
-  "model": "$name"
+  "ANTHROPIC_AUTH_TOKEN": "$api_key",
+  "ANTHROPIC_BASE_URL": "$base_url",
+  "ANTHROPIC_MODEL": "$name"
 }
 EOF
         fi
@@ -524,8 +539,36 @@ launch_claude() {
 
     printf '\033[?25h'  # 恢复光标
 
+    # 从配置文件中读取 API 信息（支持 env 对象或顶层字段）
+    local api_key base_url model_id
+    api_key=$(sed -n 's/.*"ANTHROPIC_AUTH_TOKEN": "\([^"]*\)".*/\1/p' "$model_config" 2>/dev/null | head -1)
+    base_url=$(sed -n 's/.*"ANTHROPIC_BASE_URL": "\([^"]*\)".*/\1/p' "$model_config" 2>/dev/null | head -1)
+    model_id=$(sed -n 's/.*"ANTHROPIC_MODEL": "\([^"]*\)".*/\1/p' "$model_config" 2>/dev/null | head -1)
+
+    # 如果没找到 ANTHROPIC_MODEL，尝试顶层 model 字段
+    if [[ -z "$model_id" ]]; then
+        model_id=$(sed -n 's/.*"model": "\([^"]*\)".*/\1/p' "$model_config" 2>/dev/null | head -1)
+    fi
+
+    # 导出环境变量（这才是 Claude Code 真正读取第三方 API 的方式）
+    if [[ -n "$api_key" ]]; then
+        export ANTHROPIC_AUTH_TOKEN="$api_key"
+    fi
+    if [[ -n "$base_url" ]]; then
+        export ANTHROPIC_BASE_URL="$base_url"
+    fi
+    if [[ -n "$model_id" ]]; then
+        export ANTHROPIC_MODEL="$model_id"
+    fi
+
     echo ""
     echo -e "${GREEN}🚀 启动 Claude Code [${MODEL_DESCS[$model]}]...${NC}"
+    if [[ -n "$model_id" ]]; then
+        echo -e "${BLUE}   模型: ${model_id}${NC}"
+    fi
+    if [[ -n "$base_url" ]]; then
+        echo -e "${BLUE}   代理: ${base_url}${NC}"
+    fi
     echo ""
 
     # 使用 --settings 参数直接指定配置文件，避免多窗口冲突

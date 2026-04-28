@@ -42,7 +42,8 @@ if errorlevel 1 (
 for /f "tokens=*" %%a in ('node -v') do echo [OK] Node.js: %%a
 
 :: Check Claude Code
-claude --version >nul 2>&1
+:: 必须使用 CALL，否则调用 claude.cmd 会转移控制权且不返回
+CALL claude --version >nul 2>&1
 if errorlevel 1 (
     echo.
     echo [WARN] Claude Code not found, attempting to install via npm...
