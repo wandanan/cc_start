@@ -11,15 +11,10 @@ if not exist "%BASH%" (
 )
 
 set "SCRIPT_DIR=%~dp0"
-cd /d "%SCRIPT_DIR%" 2>nul
-if errorlevel 1 (
-    echo Error: Failed to change to script directory
-    exit /b 1
-)
 
-if not exist "ccs" (
+if not exist "%SCRIPT_DIR%ccs" (
     echo Error: ccs script not found in %SCRIPT_DIR%
     exit /b 1
 )
 
-"%BASH%" -li "ccs" %*
+"%BASH%" -li "%SCRIPT_DIR%ccs" %*
