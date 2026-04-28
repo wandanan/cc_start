@@ -30,7 +30,7 @@ if errorlevel 1 (
         pause
         exit /b 1
     )
-    winget install -e --id OpenJS.NodeJS --accept-package-agreements --accept-source-agreements
+    winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
     if errorlevel 1 (
         echo [ERROR] Failed to install Node.js automatically
         echo Please install manually: https://nodejs.org/
@@ -38,6 +38,22 @@ if errorlevel 1 (
         exit /b 1
     )
     echo [OK] Node.js installed
+
+    :: Refresh PATH from registry so the current session can use node/npm
+    for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH 2^>nul ^| find "PATH"') do set "SYS_PATH=%%b"
+    for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v PATH 2^>nul ^| find "PATH"') do set "USER_PATH=%%b"
+    set "PATH=%SYS_PATH%;%USER_PATH%"
+
+    :: Verify node is accessible after PATH refresh
+    node -v >nul 2>&1
+    if errorlevel 1 (
+        echo [WARN] Node.js installed but not available in current session
+        echo This is a known Windows limitation. Please restart the terminal
+        echo and re-run install.bat, or install Node.js manually from:
+        echo https://nodejs.org/
+        pause
+        exit /b 1
+    )
 )
 for /f "tokens=*" %%a in ('node -v') do echo [OK] Node.js: %%a
 
