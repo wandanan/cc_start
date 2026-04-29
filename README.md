@@ -13,7 +13,7 @@
 **一条命令，终结 Claude Code 的上手门槛。多模型，一个工具就够了。**
 
 ---
-
+![alt text](image.png)
 ## 为什么选择 CC Start？
 
 Claude Code 默认只认 Anthropic 自家模型——想用国产大模型？环境变量、配置文件、每个窗口各自为战，稍不留神全面冲突。
