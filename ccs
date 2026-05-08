@@ -106,18 +106,24 @@ set_json_field() {
     fi
 }
 
-# 写入 DeepSeek 特有的默认环境变量到配置文件
+# 写入 DeepSeek 特有的默认环境变量到配置文件（仅填充缺失字段，不覆盖已有值）
 write_deepseek_defaults() {
     local json_file="$1"
-    local pro_model="$2"  # 带[1m]的pro模型名
-    local flash_model="deepseek-v4-flash"
+    local pro_model="$2"                     # 主模型名
+    local subagent_model="${3:-$pro_model}"   # Haiku/子代理模型，默认用主模型
 
-    set_json_field "$json_file" "ANTHROPIC_DEFAULT_OPUS_MODEL" "$pro_model"
-    set_json_field "$json_file" "ANTHROPIC_DEFAULT_SONNET_MODEL" "$pro_model"
-    set_json_field "$json_file" "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$flash_model"
-    set_json_field "$json_file" "CLAUDE_CODE_SUBAGENT_MODEL" "$flash_model"
-    set_json_field "$json_file" "CLAUDE_CODE_EFFORT_LEVEL" "max"
-    set_json_field "$json_file" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "400000"
+    for pair in "ANTHROPIC_DEFAULT_OPUS_MODEL:${pro_model}" \
+                "ANTHROPIC_DEFAULT_SONNET_MODEL:${pro_model}" \
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL:${subagent_model}" \
+                "CLAUDE_CODE_SUBAGENT_MODEL:${subagent_model}" \
+                "CLAUDE_CODE_EFFORT_LEVEL:max" \
+                "CLAUDE_CODE_AUTO_COMPACT_WINDOW:400000"; do
+        local key="${pair%%:*}"
+        local val="${pair#*:}"
+        if ! grep -q "\"$key\":" "$json_file" 2>/dev/null; then
+            set_json_field "$json_file" "$key" "$val"
+        fi
+    done
 }
 
 # 颜色定义
@@ -155,8 +161,8 @@ update_json_env() {
     local base_url="$4"
     local tmpfile="${json_file}.tmp"
 
-    # 先尝试替换已存在的字段（包括 DeepSeek 扩展字段）
-    sed -i         -e "s#\"ANTHROPIC_AUTH_TOKEN\": \"[^\"]*\"#\"ANTHROPIC_AUTH_TOKEN\": \"${api_key}\"#g"         -e "s#\"ANTHROPIC_BASE_URL\": \"[^\"]*\"#\"ANTHROPIC_BASE_URL\": \"${base_url}\"#g"         -e "s#\"ANTHROPIC_MODEL\": \"[^\"]*\"#\"ANTHROPIC_MODEL\": \"${model_name}\"#g"         -e "s#\"ANTHROPIC_DEFAULT_OPUS_MODEL\": \"[^\"]*\"#\"ANTHROPIC_DEFAULT_OPUS_MODEL\": \"${model_name}\"#g"         -e "s#\"ANTHROPIC_DEFAULT_SONNET_MODEL\": \"[^\"]*\"#\"ANTHROPIC_DEFAULT_SONNET_MODEL\": \"${model_name}\"#g"         -e "s#\"ANTHROPIC_DEFAULT_HAIKU_MODEL\": \"[^\"]*\"#\"ANTHROPIC_DEFAULT_HAIKU_MODEL\": \"${model_name}\"#g"         "$json_file" 2>/dev/null || true
+    # 先尝试替换已存在的核心字段（HAIKU 由子代理独立控制，不在此覆盖）
+    sed -i         -e "s#\"ANTHROPIC_AUTH_TOKEN\": \"[^\"]*\"#\"ANTHROPIC_AUTH_TOKEN\": \"${api_key}\"#g"         -e "s#\"ANTHROPIC_BASE_URL\": \"[^\"]*\"#\"ANTHROPIC_BASE_URL\": \"${base_url}\"#g"         -e "s#\"ANTHROPIC_MODEL\": \"[^\"]*\"#\"ANTHROPIC_MODEL\": \"${model_name}\"#g"         -e "s#\"ANTHROPIC_DEFAULT_OPUS_MODEL\": \"[^\"]*\"#\"ANTHROPIC_DEFAULT_OPUS_MODEL\": \"${model_name}\"#g"         -e "s#\"ANTHROPIC_DEFAULT_SONNET_MODEL\": \"[^\"]*\"#\"ANTHROPIC_DEFAULT_SONNET_MODEL\": \"${model_name}\"#g"         "$json_file" 2>/dev/null || true
 
     # 对于不存在的字段，在最后一个 } 前插入（使用 awk，Git Bash 自带）
     for pair in "ANTHROPIC_AUTH_TOKEN:${api_key}" "ANTHROPIC_BASE_URL:${base_url}" "ANTHROPIC_MODEL:${model_name}"; do
@@ -516,17 +522,22 @@ add_model() {
             continue
         fi
 
-        # DeepSeek 自动检测与配置
+        # DeepSeek 自动检测：自动加 [1m] 后缀
         local is_ds=false
-        local ds_pro_model=""
         if is_deepseek_api "$base_url"; then
             is_ds=true
             name="$(ensure_1m_suffix "$name")"
-            ds_pro_model="$name"
             echo ""
             echo -e "  ${CYA}🔍 检测到 DeepSeek API，已自动配置 1M 上下文窗口${NC}"
-            echo -e "  ${DIM}  模型 ID 已更新: ${name}${NC}"
+            echo -e "  ${DIM}  主模型 ID 已更新: ${name}${NC}"
         fi
+
+        # 子代理 / Haiku 模型配置（所有模型通用）
+        echo ""
+        echo -e "  ${BOLD}第 5 步 / 4${NC}  ${DIM}─  设置 Haiku/子代理模型${NC}"
+        echo -e "  ${DIM}  子代理使用主模型的 API 端点，只能配置同厂商的模型${NC}"
+        read -e -p "    子代理模型名 [${name}]: " subagent_model
+        [[ -z "$subagent_model" ]] && subagent_model="$name"
 
         # 确认
         echo ""
@@ -538,11 +549,12 @@ add_model() {
         echo -e "  模型 ID:   ${name}"
         echo -e "  API Key:   ${api_key:0:8}${DIM}...${NC}${api_key: -4}"
         echo -e "  Base URL:  ${base_url}"
+        echo -e "  子代理模型: ${subagent_model}"
+        if [[ "$subagent_model" == "$name" ]]; then
+            echo -e "  ${DIM}            (与主模型相同)${NC}"
+        fi
         if $is_ds; then
-            echo ""
-            echo -e "  ${CYA}DeepSeek 特殊配置 (自动):${NC}"
-            echo -e "    Opus/Sonnet 模型:    ${ds_pro_model}"
-            echo -e "    Haiku/子代理模型:    deepseek-v4-flash"
+            echo -e "  ${CYA}DeepSeek 额外配置:${NC}"
             echo -e "    Effort Level:        max"
             echo -e "    自动压缩窗口上限:    400000"
         fi
@@ -560,32 +572,32 @@ add_model() {
         if [[ -f "$USER_SETTINGS" ]]; then
             cp "$USER_SETTINGS" "$CONFIG_DIR/${alias}.json"
             update_json_env "$CONFIG_DIR/${alias}.json" "$name" "$api_key" "$base_url"
+            # 写入模型角色映射（所有模型通用）
+            set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_OPUS_MODEL" "$name"
+            set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_SONNET_MODEL" "$name"
+            set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$subagent_model"
+            set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_SUBAGENT_MODEL" "$subagent_model"
+            # DeepSeek 特有字段
             if $is_ds; then
-                write_deepseek_defaults "$CONFIG_DIR/${alias}.json" "$ds_pro_model"
+                set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_EFFORT_LEVEL" "max"
+                set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "400000"
             fi
         else
-            if $is_ds; then
-                cat > "$CONFIG_DIR/${alias}.json" << EOF
-{
-  "ANTHROPIC_AUTH_TOKEN": "$api_key",
-  "ANTHROPIC_BASE_URL": "$base_url",
-  "ANTHROPIC_MODEL": "$name",
-  "ANTHROPIC_DEFAULT_OPUS_MODEL": "${ds_pro_model}",
-  "ANTHROPIC_DEFAULT_SONNET_MODEL": "${ds_pro_model}",
-  "ANTHROPIC_DEFAULT_HAIKU_MODEL": "deepseek-v4-flash",
-  "CLAUDE_CODE_SUBAGENT_MODEL": "deepseek-v4-flash",
-  "CLAUDE_CODE_EFFORT_LEVEL": "max",
-  "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "400000"
-}
-EOF
-            else
-                cat > "$CONFIG_DIR/${alias}.json" << EOF
+            # 创建最小模板，然后用 set_json_field 追加其余字段
+            cat > "$CONFIG_DIR/${alias}.json" << EOF
 {
   "ANTHROPIC_AUTH_TOKEN": "$api_key",
   "ANTHROPIC_BASE_URL": "$base_url",
   "ANTHROPIC_MODEL": "$name"
 }
 EOF
+            set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_OPUS_MODEL" "$name"
+            set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_SONNET_MODEL" "$name"
+            set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$subagent_model"
+            set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_SUBAGENT_MODEL" "$subagent_model"
+            if $is_ds; then
+                set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_EFFORT_LEVEL" "max"
+                set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "400000"
             fi
         fi
 
@@ -663,29 +675,32 @@ edit_model() {
         ds_pro_model="$name"
     fi
 
-    # 如果是 DeepSeek 模型，允许编辑扩展字段
+    # 子代理 / Haiku 模型配置（所有模型通用）
     local subagent_model="$cur_subagent"
+    echo ""
+    echo -e "  ${BOLD}扩展配置${NC}  ${DIM}(直接回车保留当前值)${NC}"
+    echo -e "  ${DIM}子代理使用主模型的 API 端点，只能配置同厂商的模型${NC}"
+    read -e -p "    Haiku/子代理模型 [${cur_subagent:-$name}]: " subagent_model
+    [[ -z "$subagent_model" ]] && subagent_model="${cur_subagent:-$name}"
+
+    # DeepSeek 特有扩展字段
     local effort_level="$cur_effort"
     local compact_window="$cur_compact"
     if $is_ds_now; then
-        echo ""
-        echo -e "  ${CYA}DeepSeek 扩展配置 (直接回车保留默认):${NC}"
-        read -e -p "    Haiku/子代理模型 [${cur_subagent:-deepseek-v4-flash}]: " subagent_model
-        [[ -z "$subagent_model" ]] && subagent_model="${cur_subagent:-deepseek-v4-flash}"
         read -e -p "    Effort Level [${cur_effort:-max}]: " effort_level
         [[ -z "$effort_level" ]] && effort_level="${cur_effort:-max}"
         read -e -p "    自动压缩窗口上限 [${cur_compact:-400000}]: " compact_window
         [[ -z "$compact_window" ]] && compact_window="${cur_compact:-400000}"
-        [[ -z "$ds_pro_model" ]] && ds_pro_model="$name"
     fi
+    [[ -z "$ds_pro_model" ]] && ds_pro_model="$name"
 
     echo ""
     echo -e "  ${BOLD}确认修改:${NC}"
     echo -e "    模型 ID:   ${name}"
     echo -e "    API Key:   ${api_key:0:8}${DIM}...${NC}${api_key: -4}"
     echo -e "    Base URL:  ${base_url}"
+    echo -e "    子代理模型: ${subagent_model}"
     if $is_ds_now; then
-        echo -e "    ${CYA}Haiku/SubAgent:  ${subagent_model}${NC}"
         echo -e "    ${CYA}Effort Level:    ${effort_level}${NC}"
         echo -e "    ${CYA}Compact Window:  ${compact_window}${NC}"
     fi
@@ -699,13 +714,15 @@ edit_model() {
     update_json_env "$model_config" "$name" "$api_key" "$base_url"
     MODEL_DESCS["$model"]="$name"
 
+    # 写入模型角色映射（所有模型通用）
+    set_json_field "$model_config" "ANTHROPIC_DEFAULT_OPUS_MODEL" "$name"
+    set_json_field "$model_config" "ANTHROPIC_DEFAULT_SONNET_MODEL" "$name"
+    set_json_field "$model_config" "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$subagent_model"
+    set_json_field "$model_config" "CLAUDE_CODE_SUBAGENT_MODEL" "$subagent_model"
+
     if $is_ds_now; then
-        write_deepseek_defaults "$model_config" "$ds_pro_model"
-        # 覆盖用户自定义的扩展字段
-        [[ -n "$subagent_model" ]] && set_json_field "$model_config" "CLAUDE_CODE_SUBAGENT_MODEL" "$subagent_model"
         [[ -n "$effort_level" ]] && set_json_field "$model_config" "CLAUDE_CODE_EFFORT_LEVEL" "$effort_level"
         [[ -n "$compact_window" ]] && set_json_field "$model_config" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "$compact_window"
-        set_json_field "$model_config" "ANTHROPIC_DEFAULT_HAIKU_MODEL" "${subagent_model:-deepseek-v4-flash}"
     fi
 
     echo ""
