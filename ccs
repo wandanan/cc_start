@@ -95,11 +95,28 @@ set_json_field() {
         awk -v k="$key" -v v="$val" '
             { lines[NR] = $0 }
             END {
+                # 找到最后 } 之前最后一个非空行
+                prev_idx = 0
+                for (j = NR - 1; j >= 1; j--) {
+                    if (lines[j] !~ /^[[:space:]]*$/) {
+                        prev_idx = j
+                        break
+                    }
+                }
                 for (i = 1; i <= NR; i++) {
                     if (i == NR && lines[i] ~ /^[[:space:]]*}/) {
-                        print "  \"" k "\": \"" v "\","
+                        print "  \"" k "\": \"" v "\""
                     }
-                    print lines[i]
+                    # 在最后 } 的前一个非空行末尾补逗号（如果还没有逗号且不是 {）
+                    if (i == prev_idx) {
+                        if (lines[i] ~ /[,\{][[:space:]]*$/) {
+                            print lines[i]
+                        } else {
+                            print lines[i] ","
+                        }
+                    } else {
+                        print lines[i]
+                    }
                 }
             }
         ' "$json_file" > "$tmpfile" && mv "$tmpfile" "$json_file"
@@ -172,11 +189,26 @@ update_json_env() {
             awk -v k="$key" -v v="$val" '''
                 { lines[NR] = $0 }
                 END {
+                    prev_idx = 0
+                    for (j = NR - 1; j >= 1; j--) {
+                        if (lines[j] !~ /^[[:space:]]*$/) {
+                            prev_idx = j
+                            break
+                        }
+                    }
                     for (i = 1; i <= NR; i++) {
                         if (i == NR && lines[i] ~ /^[[:space:]]*}/) {
-                            print "  \"" k "\": \"" v "\","
+                            print "  \"" k "\": \"" v "\""
                         }
-                        print lines[i]
+                        if (i == prev_idx) {
+                            if (lines[i] ~ /[,\{][[:space:]]*$/) {
+                                print lines[i]
+                            } else {
+                                print lines[i] ","
+                            }
+                        } else {
+                            print lines[i]
+                        }
                     }
                 }
             ''' "$json_file" > "$tmpfile" && mv "$tmpfile" "$json_file"
@@ -276,6 +308,14 @@ create_merged_settings() {
                 -v subagent="$subagent_model" -v effort="$effort_level" -v compact="$compact_window" '
                 { lines[NR] = $0 }
                 END {
+                    # 找到最后 } 之前最后一个非空行，用于判断是否需要添加逗号
+                    prev_idx = 0
+                    for (j = NR - 1; j >= 1; j--) {
+                        if (lines[j] !~ /^[[:space:]]*$/) {
+                            prev_idx = j
+                            break
+                        }
+                    }
                     for (i = 1; i <= NR; i++) {
                         if (i == NR && lines[i] ~ /^[[:space:]]*}/) {
                             print "  \"env\": {"
@@ -289,9 +329,18 @@ create_merged_settings() {
                             if (effort != "") printf ",\n    \"CLAUDE_CODE_EFFORT_LEVEL\": \"%s\"", effort
                             if (compact != "") printf ",\n    \"CLAUDE_CODE_AUTO_COMPACT_WINDOW\": \"%s\"", compact
                             print ""
-                            print "  },"
+                            print "  }"
                         }
-                        print lines[i]
+                        # 在最后 } 的前一个非空行末尾补逗号（如果还没有逗号且不是 {）
+                        if (i == prev_idx) {
+                            if (lines[i] ~ /[,\{][[:space:]]*$/) {
+                                print lines[i]
+                            } else {
+                                print lines[i] ","
+                            }
+                        } else {
+                            print lines[i]
+                        }
                     }
                 }
             ' "$tmpfile" > "${tmpfile}.bak" && mv "${tmpfile}.bak" "$tmpfile"
