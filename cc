@@ -123,6 +123,45 @@ set_json_field() {
     fi
 }
 
+# 在 JSON 文件中设置布尔字段（存在则替换，不存在则插入）
+set_json_bool_field() {
+    local json_file="$1"
+    local key="$2"
+    local val="$3"
+    local tmpfile="${json_file}.tmp"
+
+    if grep -q "\"$key\":" "$json_file" 2>/dev/null; then
+        sed -i "s#\"$key\": [^,}]*#\"$key\": ${val}#g" "$json_file" 2>/dev/null || true
+    else
+        awk -v k="$key" -v v="$val" '
+            { lines[NR] = $0 }
+            END {
+                prev_idx = 0
+                for (j = NR - 1; j >= 1; j--) {
+                    if (lines[j] !~ /^[[:space:]]*$/) {
+                        prev_idx = j
+                        break
+                    }
+                }
+                for (i = 1; i <= NR; i++) {
+                    if (i == NR && lines[i] ~ /^[[:space:]]*}/) {
+                        print "  \"" k "\": " v
+                    }
+                    if (i == prev_idx) {
+                        if (lines[i] ~ /[,\{][[:space:]]*$/) {
+                            print lines[i]
+                        } else {
+                            print lines[i] ","
+                        }
+                    } else {
+                        print lines[i]
+                    }
+                }
+            }
+        ' "$json_file" > "$tmpfile" && mv "$tmpfile" "$json_file"
+    fi
+}
+
 # 写入 DeepSeek 特有的默认环境变量到配置文件（仅填充缺失字段，不覆盖已有值）
 write_deepseek_defaults() {
     local json_file="$1"
@@ -348,6 +387,11 @@ create_merged_settings() {
     else
         # 没有全局 settings.json，直接用 per-model 配置
         cp "$model_config" "$tmpfile"
+    fi
+
+    # 从模型配置注入 skipWebFetchPreflight（WebFetch 域名安全验证，解决企业防火墙阻断问题）
+    if grep -q '"skipWebFetchPreflight": *true' "$model_config" 2>/dev/null; then
+        set_json_bool_field "$tmpfile" "skipWebFetchPreflight" "true"
     fi
 
     echo "$tmpfile"
@@ -631,6 +675,7 @@ add_model() {
                 set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_EFFORT_LEVEL" "max"
                 set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "400000"
             fi
+            set_json_bool_field "$CONFIG_DIR/${alias}.json" "skipWebFetchPreflight" "true"
         else
             # 创建最小模板，然后用 set_json_field 追加其余字段
             cat > "$CONFIG_DIR/${alias}.json" << EOF
@@ -648,6 +693,7 @@ EOF
                 set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_EFFORT_LEVEL" "max"
                 set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "400000"
             fi
+            set_json_bool_field "$CONFIG_DIR/${alias}.json" "skipWebFetchPreflight" "true"
         fi
 
         echo ""

@@ -31,7 +31,7 @@ show_banner() {
 }
 
 # ── 步骤工具 ──────────────────────────────────────────────────
-TOTAL_STEPS=6
+TOTAL_STEPS=7
 step=0
 
 step_begin() {
@@ -223,7 +223,53 @@ if [[ $model_count -eq 0 ]]; then
 fi
 
 # ═══════════════════════════════════════════════════════════════
-# Step 6: 配置 PATH
+# Step 6: 补齐 skipWebFetchPreflight 配置
+# ═══════════════════════════════════════════════════════════════
+step_begin "补齐 WebFetch 配置" "检查已有模型配置，自动添加 skipWebFetchPreflight..."
+
+fixed_count=0
+for json_file in "$HOME/.claude/models"/*.json; do
+    [[ -f "$json_file" ]] || continue
+    if grep -q '"skipWebFetchPreflight"' "$json_file" 2>/dev/null; then
+        continue
+    fi
+    tmpfile="${json_file}.tmp"
+    awk -v key="skipWebFetchPreflight" -v val="true" '
+        { lines[NR] = $0 }
+        END {
+            prev_idx = 0
+            for (j = NR - 1; j >= 1; j--) {
+                if (lines[j] !~ /^[[:space:]]*$/) {
+                    prev_idx = j
+                    break
+                }
+            }
+            for (i = 1; i <= NR; i++) {
+                if (i == NR && lines[i] ~ /^[[:space:]]*}/) {
+                    print "  \"" key "\": " val
+                }
+                if (i == prev_idx) {
+                    if (lines[i] ~ /[,\{][[:space:]]*$/) {
+                        print lines[i]
+                    } else {
+                        print lines[i] ","
+                    }
+                } else {
+                    print lines[i]
+                }
+            }
+        }
+    ' "$json_file" > "$tmpfile" && mv "$tmpfile" "$json_file"
+    step_ok "$(basename "$json_file")"
+    fixed_count=$((fixed_count + 1))
+done
+
+if [[ $fixed_count -eq 0 ]]; then
+    step_info "所有配置已包含 skipWebFetchPreflight"
+fi
+
+# ═══════════════════════════════════════════════════════════════
+# Step 7: 配置 PATH
 # ═══════════════════════════════════════════════════════════════
 step_begin "检查 PATH 配置" "确保安装目录在系统 PATH 中..."
 
