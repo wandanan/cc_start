@@ -540,8 +540,8 @@ show_menu() {
     done
 
     echo ""
-    echo -e "  ${YELLOW}q)${NC}  退出"
-    echo -e "  ${YELLOW}a)${NC}  添加新模型"
+    echo -e "  ${YELLOW}q)${NC}  退出        ${YELLOW}e)${NC}  编辑模型配置"
+    echo -e "  ${YELLOW}a)${NC}  添加新模型  ${YELLOW}r)${NC}  删除模型"
     echo -e "  ${YELLOW}h)${NC}  查看帮助"
     echo ""
 }
@@ -752,6 +752,9 @@ edit_model() {
     echo -e "  ${DIM}直接回车保留当前值${NC}"
     echo ""
 
+    read -e -p "  启动命令名称 [${model}]: " new_alias
+    [[ -z "$new_alias" ]] && new_alias="$model"
+
     read -e -p "  模型 ID [${cur_name}]: " name
     [[ -z "$name" ]] && name="$cur_name"
 
@@ -791,6 +794,7 @@ edit_model() {
 
     echo ""
     echo -e "  ${BOLD}确认修改:${NC}"
+    echo -e "    命令名称:  ${CMD_NAME} ${new_alias}"
     echo -e "    模型 ID:   ${name}"
     echo -e "    API Key:   ${api_key:0:8}${DIM}...${NC}${api_key: -4}"
     echo -e "    Base URL:  ${base_url}"
@@ -804,6 +808,23 @@ edit_model() {
     if [[ "$confirm" == "n" || "$confirm" == "N" ]]; then
         echo "  已取消"
         return 1
+    fi
+
+    # 如果命令名称变更，重命名配置文件
+    if [[ "$new_alias" != "$model" ]]; then
+        local new_config="$CONFIG_DIR/${new_alias}.json"
+        if [[ -f "$new_config" ]]; then
+            echo -e "${RED}  ✗ 命令名称 '${new_alias}' 已被占用${NC}"
+            return 1
+        fi
+        mv "$model_config" "$new_config"
+        model_config="$new_config"
+        # 更新数组：删除旧 key，添加新 key
+        unset "MODELS[$model]"
+        unset "MODEL_DESCS[$model]"
+        MODELS["$new_alias"]="$name"
+        MODEL_DESCS["$new_alias"]="$name"
+        model="$new_alias"
     fi
 
     update_json_env "$model_config" "$name" "$api_key" "$base_url"
@@ -1192,7 +1213,7 @@ main() {
         # 进入交互选择
         while true; do
             show_menu
-            read -e -p "  请输入编号或名称 (q=退出 a=添加 h=帮助): " choice
+            read -e -p "  请输入编号或名称 (q=退出 a=添加 e=编辑 r=删除 h=帮助): " choice
 
             if [[ -z "$choice" ]]; then
                 echo -e "${RED}  请输入选项${NC}"
@@ -1215,6 +1236,20 @@ main() {
                     ;;
                 h|H)
                     show_help
+                    echo ""
+                    read -p "  按回车继续..."
+                    continue
+                    ;;
+                e|E)
+                    edit_model
+                    scan_models "$CONFIG_DIR"
+                    echo ""
+                    read -p "  按回车继续..."
+                    continue
+                    ;;
+                r|R)
+                    remove_model
+                    scan_models "$CONFIG_DIR"
                     echo ""
                     read -p "  按回车继续..."
                     continue
