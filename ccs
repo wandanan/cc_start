@@ -65,7 +65,17 @@ find_claude_bin() {
                 return
             fi
         fi
-        # 3) 兜底：npx -y 免交互安装
+        # 3) 直接扫描 nvm 安装目录（nvm 路径固定，不受 shell 环境影响）
+        local nvm_dir="${NVM_DIR:-$HOME_DIR/.nvm}"
+        if [[ -d "$nvm_dir/versions/node" ]]; then
+            for dir in "$nvm_dir/versions/node"/*/bin; do
+                if [[ -f "$dir/claude" ]]; then
+                    echo "$dir/claude"
+                    return
+                fi
+            done
+        fi
+        # 4) 兜底：npx -y 免交互安装
         if command -v npx &>/dev/null; then
             echo "npx -y @anthropic-ai/claude-code"
         else

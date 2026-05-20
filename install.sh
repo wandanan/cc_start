@@ -186,6 +186,13 @@ if [[ "$SKIP_SCRIPTS" == "0" ]]; then
     chmod +x "$INSTALL_DIR/cc"
     sed -i 's/\r$//' "$INSTALL_DIR/cc"
     ln -sf "$INSTALL_DIR/cc" "$INSTALL_DIR/ccs"
+    # 创建 claude 符号链接，确保 cc 运行时能找到二进制
+    # （cc 脚本不加载 .bashrc，nvm 管理的 node/npm 不在 PATH 中）
+    local_claude=$(which claude 2>/dev/null || true)
+    if [[ -n "$local_claude" && "$local_claude" != "$INSTALL_DIR/claude" ]]; then
+        ln -sf "$local_claude" "$INSTALL_DIR/claude"
+        step_ok "claude → ${local_claude}"
+    fi
     step_ok "cc  → ${INSTALL_DIR}/cc"
     step_ok "ccs → ${INSTALL_DIR}/ccs"
 fi
