@@ -49,10 +49,25 @@ find_claude_bin() {
             echo "$HOME_DIR/.local/bin/claude.exe"
         fi
     else
+        # 1) PATH 中查找
         local claude_path
         claude_path="$(which claude 2>/dev/null)"
         if [[ -n "$claude_path" ]]; then
             echo "$claude_path"
+            return
+        fi
+        # 2) npm 全局目录直接查找（绕过 nvm 不在 PATH 的问题）
+        local npm_bin=""
+        npm_bin="$(npm prefix -g 2>/dev/null)/bin"
+        if [[ -n "$npm_bin" && -d "$npm_bin" ]]; then
+            if [[ -f "$npm_bin/claude" ]]; then
+                echo "$npm_bin/claude"
+                return
+            fi
+        fi
+        # 3) 兜底：npx -y 免交互安装
+        if command -v npx &>/dev/null; then
+            echo "npx -y @anthropic-ai/claude-code"
         else
             echo "$HOME_DIR/.local/bin/claude"
         fi
