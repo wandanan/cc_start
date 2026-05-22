@@ -1213,9 +1213,6 @@ upgrade_claude() {
         echo -e "  ${YLW}⚠ 未检测到已安装的 Claude Code${NC}"
     fi
 
-    echo -e "  ${DIM}通过 npm 升级到最新版本 (约 200MB，可能需数分钟)...${NC}"
-    echo ""
-
     local npm_cmd="npm"
     local npm_prefix
     npm_prefix=$(npm config get prefix 2>/dev/null)
@@ -1232,7 +1229,30 @@ upgrade_claude() {
         fi
     fi
 
-    $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code
+    echo -e "  ${DIM}通过 npm 升级到最新版本 (约 200MB，下载较慢请耐心等待)...${NC}"
+
+    $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code &
+    local npm_pid=$!
+    local spin='-\|/'
+    local spin_i=0
+    local spin_start=$SECONDS
+    while kill -0 $npm_pid 2>/dev/null; do
+        local elapsed=$((SECONDS - spin_start))
+        printf "\r  ${DIM}安装中... %s (已耗时 %ds)${NC}" "${spin:spin_i++%4:1}" "$elapsed"
+        sleep 0.5
+    done
+    wait $npm_pid
+    local npm_rc=$?
+    printf "\r\033[K"
+
+    if [[ $npm_rc -ne 0 ]]; then
+        echo ""
+        echo -e "  ${RED}✗ 升级失败 (exit code: $npm_rc)${NC}"
+        echo -e "  ${YLW}请手动执行: $npm_cmd install -g @anthropic-ai/claude-code${NC}"
+        echo ""
+        read -p "  按回车继续..."
+        return
+    fi
 
     local new_ver=""
     if command -v claude &>/dev/null; then
