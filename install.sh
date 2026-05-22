@@ -137,8 +137,8 @@ fi
 if [[ "$CLAUDE_OK" == "0" ]]; then
     step_info "通过 npm 安装 Claude Code..."
 
-    local npm_cmd="npm"
-    local npm_prefix
+    npm_cmd="npm"
+    npm_prefix=""
     npm_prefix=$(npm config get prefix 2>/dev/null)
     if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "$npm_prefix" ]] && [[ ! -w "$npm_prefix/lib/node_modules" ]]; then
         if sudo -n true 2>/dev/null; then
