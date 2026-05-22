@@ -657,6 +657,17 @@ add_model() {
         read -e -p "    子代理模型名 [${name}]: " subagent_model
         [[ -z "$subagent_model" ]] && subagent_model="$name"
 
+        # Effort / Compact 配置（所有模型通用，直接回车使用默认值）
+        local effort_level=""
+        local compact_window=""
+        echo ""
+        echo -e "  ${BOLD}扩展配置${NC}  ${DIM}(直接回车使用默认值)${NC}"
+        echo -e "  ${DIM}Effort Level 控制推理深度，Compact Window 控制自动压缩行为${NC}"
+        read -e -p "    Effort Level [max]: " effort_level
+        [[ -z "$effort_level" ]] && effort_level="max"
+        read -e -p "    自动压缩窗口上限 [400000]: " compact_window
+        [[ -z "$compact_window" ]] && compact_window="400000"
+
         # 确认
         echo ""
         echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
@@ -671,11 +682,8 @@ add_model() {
         if [[ "$subagent_model" == "$name" ]]; then
             echo -e "  ${DIM}            (与主模型相同)${NC}"
         fi
-        if $is_ds; then
-            echo -e "  ${CYA}DeepSeek 额外配置:${NC}"
-            echo -e "    Effort Level:        max"
-            echo -e "    自动压缩窗口上限:    400000"
-        fi
+        echo -e "  ${CYA}Effort Level:    ${effort_level}${NC}"
+        echo -e "  ${CYA}Compact Window:  ${compact_window}${NC}"
         echo ""
         read -e -p "  确认保存? (Y/n/r 重填): " action
         if [[ "$action" == "r" || "$action" == "R" ]]; then
@@ -695,11 +703,8 @@ add_model() {
             set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_SONNET_MODEL" "$name"
             set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$subagent_model"
             set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_SUBAGENT_MODEL" "$subagent_model"
-            # DeepSeek 特有字段
-            if $is_ds; then
-                set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_EFFORT_LEVEL" "max"
-                set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "400000"
-            fi
+            set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_EFFORT_LEVEL" "$effort_level"
+            set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "$compact_window"
             set_json_bool_field "$CONFIG_DIR/${alias}.json" "skipWebFetchPreflight" "true"
         else
             # 创建最小模板，然后用 set_json_field 追加其余字段
@@ -714,10 +719,8 @@ EOF
             set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_SONNET_MODEL" "$name"
             set_json_field "$CONFIG_DIR/${alias}.json" "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$subagent_model"
             set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_SUBAGENT_MODEL" "$subagent_model"
-            if $is_ds; then
-                set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_EFFORT_LEVEL" "max"
-                set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "400000"
-            fi
+            set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_EFFORT_LEVEL" "$effort_level"
+            set_json_field "$CONFIG_DIR/${alias}.json" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "$compact_window"
             set_json_bool_field "$CONFIG_DIR/${alias}.json" "skipWebFetchPreflight" "true"
         fi
 
@@ -806,15 +809,13 @@ edit_model() {
     read -e -p "    Haiku/子代理模型 [${cur_subagent:-$name}]: " subagent_model
     [[ -z "$subagent_model" ]] && subagent_model="${cur_subagent:-$name}"
 
-    # DeepSeek 特有扩展字段
+    # 扩展字段（所有模型通用）
     local effort_level="$cur_effort"
     local compact_window="$cur_compact"
-    if $is_ds_now; then
-        read -e -p "    Effort Level [${cur_effort:-max}]: " effort_level
-        [[ -z "$effort_level" ]] && effort_level="${cur_effort:-max}"
-        read -e -p "    自动压缩窗口上限 [${cur_compact:-400000}]: " compact_window
-        [[ -z "$compact_window" ]] && compact_window="${cur_compact:-400000}"
-    fi
+    read -e -p "    Effort Level [${cur_effort:-max}]: " effort_level
+    [[ -z "$effort_level" ]] && effort_level="${cur_effort:-max}"
+    read -e -p "    自动压缩窗口上限 [${cur_compact:-400000}]: " compact_window
+    [[ -z "$compact_window" ]] && compact_window="${cur_compact:-400000}"
     [[ -z "$ds_pro_model" ]] && ds_pro_model="$name"
 
     echo ""
@@ -824,10 +825,8 @@ edit_model() {
     echo -e "    API Key:   ${api_key:0:8}${DIM}...${NC}${api_key: -4}"
     echo -e "    Base URL:  ${base_url}"
     echo -e "    子代理模型: ${subagent_model}"
-    if $is_ds_now; then
-        echo -e "    ${CYA}Effort Level:    ${effort_level}${NC}"
-        echo -e "    ${CYA}Compact Window:  ${compact_window}${NC}"
-    fi
+    echo -e "    ${CYA}Effort Level:    ${effort_level}${NC}"
+    echo -e "    ${CYA}Compact Window:  ${compact_window}${NC}"
     echo ""
     read -e -p "  确认保存? (Y/n): " confirm
     if [[ "$confirm" == "n" || "$confirm" == "N" ]]; then
@@ -860,11 +859,8 @@ edit_model() {
     set_json_field "$model_config" "ANTHROPIC_DEFAULT_SONNET_MODEL" "$name"
     set_json_field "$model_config" "ANTHROPIC_DEFAULT_HAIKU_MODEL" "$subagent_model"
     set_json_field "$model_config" "CLAUDE_CODE_SUBAGENT_MODEL" "$subagent_model"
-
-    if $is_ds_now; then
-        [[ -n "$effort_level" ]] && set_json_field "$model_config" "CLAUDE_CODE_EFFORT_LEVEL" "$effort_level"
-        [[ -n "$compact_window" ]] && set_json_field "$model_config" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "$compact_window"
-    fi
+    [[ -n "$effort_level" ]] && set_json_field "$model_config" "CLAUDE_CODE_EFFORT_LEVEL" "$effort_level"
+    [[ -n "$compact_window" ]] && set_json_field "$model_config" "CLAUDE_CODE_AUTO_COMPACT_WINDOW" "$compact_window"
 
     echo ""
     echo -e "  ${GREEN}✓ 模型 '${model}' 已更新${NC}"
