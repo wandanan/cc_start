@@ -135,7 +135,7 @@ else
 fi
 
 if [[ "$CLAUDE_OK" == "0" ]]; then
-    step_info "通过 npm 安装 Claude Code..."
+    step_info "通过 npm 安装 Claude Code (约 200MB，可能需数分钟)..."
 
     npm_cmd="npm"
     npm_prefix=""
@@ -149,7 +149,7 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
         fi
     fi
 
-    if $npm_cmd install -g @anthropic-ai/claude-code; then
+    if $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
         CLAUDE_VER=$(claude --version 2>/dev/null) || true
         step_ok "Claude Code 安装成功"
     else

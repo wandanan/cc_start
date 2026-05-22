@@ -1213,7 +1213,7 @@ upgrade_claude() {
         echo -e "  ${YLW}⚠ 未检测到已安装的 Claude Code${NC}"
     fi
 
-    echo -e "  ${DIM}通过 npm 升级到最新版本...${NC}"
+    echo -e "  ${DIM}通过 npm 升级到最新版本 (约 200MB，可能需数分钟)...${NC}"
     echo ""
 
     local npm_cmd="npm"
@@ -1232,7 +1232,7 @@ upgrade_claude() {
         fi
     fi
 
-    $npm_cmd install -g @anthropic-ai/claude-code
+    $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code
 
     local new_ver=""
     if command -v claude &>/dev/null; then
