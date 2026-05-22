@@ -59,27 +59,6 @@ step_info() {
     echo -e "  ${BLU}→${NC} $1"
 }
 
-# Run command with spinning progress, return exit code
-spin_run() {
-    local msg="$1"
-    shift
-    local spin='-\|/'
-    local i=0
-    local start_time=$SECONDS
-
-    "$@" >/dev/null 2>&1 &
-    local pid=$!
-
-    while kill -0 $pid 2>/dev/null; do
-        local elapsed=$((SECONDS - start_time))
-        printf "\r  ${BLU}→${NC} %s %s (${elapsed}s)" "$msg" "${spin:i++%4:1}"
-        sleep 0.5
-    done
-    wait $pid
-    local rc=$?
-    printf "\r\033[K"
-    return $rc
-}
 
 # ── 起始 ──────────────────────────────────────────────────────
 
@@ -177,7 +156,9 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
         $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
     fi
 
-    if spin_run "安装 Claude Code (约 200MB)" $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
+    step_info "安装 Claude Code (约 200MB，下载较慢请耐心等待)..."
+
+    if $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
         CLAUDE_VER=$(claude --version 2>/dev/null) || true
         step_ok "Claude Code 安装成功"
     else
