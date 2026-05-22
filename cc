@@ -1240,7 +1240,27 @@ upgrade_claude() {
         $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
     fi
 
-    if ! $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
+    # Auto-switch to npmmirror if npmjs.org is slow
+    local saved_registry=""
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if ! curl -s -o /dev/null --max-time 5 "https://registry.npmjs.org" 2>/dev/null; then
+            echo -e "  ${YLW}npmjs.org 访问缓慢，切换至 npmmirror 镜像${NC}"
+            saved_registry=$(npm config get registry 2>/dev/null)
+            $npm_cmd config set registry https://registry.npmmirror.com
+        fi
+    fi
+
+    local upgrade_ok=0
+    if $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
+        upgrade_ok=1
+    fi
+
+    # Restore original registry
+    if [[ -n "$saved_registry" ]]; then
+        $npm_cmd config set registry "$saved_registry"
+    fi
+
+    if [[ $upgrade_ok -eq 0 ]]; then
         echo ""
         echo -e "  ${RED}✗ 升级失败${NC}"
         echo -e "  ${YLW}请手动执行: $npm_cmd install -g @anthropic-ai/claude-code${NC}"

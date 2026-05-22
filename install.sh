@@ -156,13 +156,33 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
         $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
     fi
 
+    # Auto-switch to npmmirror if npmjs.org is unreachable
+    saved_registry=""
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        if ! curl -s -o /dev/null --max-time 5 "https://registry.npmjs.org" 2>/dev/null; then
+            step_warn "npmjs.org 访问缓慢，切换至 npmmirror 镜像"
+            saved_registry=$(npm config get registry 2>/dev/null)
+            $npm_cmd config set registry https://registry.npmmirror.com
+        fi
+    fi
+
     step_info "安装 Claude Code (约 200MB，下载较慢请耐心等待)..."
+    install_ok=0
 
     if $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
         CLAUDE_VER=$(claude --version 2>/dev/null) || true
         step_ok "Claude Code 安装成功"
+        install_ok=1
     else
         step_fail "安装失败，请手动执行: $npm_cmd install -g @anthropic-ai/claude-code"
+    fi
+
+    # Restore original registry
+    if [[ -n "$saved_registry" ]]; then
+        $npm_cmd config set registry "$saved_registry"
+    fi
+
+    if [[ $install_ok -eq 0 ]]; then
         exit 1
     fi
 fi
