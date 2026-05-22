@@ -1216,7 +1216,14 @@ upgrade_claude() {
     echo -e "  ${DIM}通过 npm 升级到最新版本...${NC}"
     echo ""
 
-    npm install -g @anthropic-ai/claude-code
+    local npm_cmd="npm"
+    local npm_prefix
+    npm_prefix=$(npm config get prefix 2>/dev/null)
+    if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "$npm_prefix" ]] && [[ ! -w "$npm_prefix/lib/node_modules" ]]; then
+        npm_cmd="sudo npm"
+    fi
+
+    $npm_cmd install -g @anthropic-ai/claude-code
 
     local new_ver=""
     if command -v claude &>/dev/null; then
