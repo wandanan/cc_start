@@ -1239,7 +1239,7 @@ upgrade_claude() {
         $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
     fi
 
-    $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code &
+    $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code >/dev/null 2>&1 &
     local npm_pid=$!
     local spin='-\|/'
     local spin_i=0

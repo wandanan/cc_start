@@ -67,7 +67,7 @@ spin_run() {
     local i=0
     local start_time=$SECONDS
 
-    "$@" &
+    "$@" >/dev/null 2>&1 &
     local pid=$!
 
     while kill -0 $pid 2>/dev/null; do
