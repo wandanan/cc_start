@@ -567,7 +567,7 @@ show_menu() {
     echo ""
     echo -e "  ${YELLOW}q)${NC}  退出        ${YELLOW}e)${NC}  编辑模型配置"
     echo -e "  ${YELLOW}a)${NC}  添加新模型  ${YELLOW}r)${NC}  删除模型"
-    echo -e "  ${YELLOW}h)${NC}  查看帮助"
+    echo -e "  ${YELLOW}u)${NC}  升级 Claude  ${YELLOW}h)${NC}  查看帮助"
     echo ""
 }
 
@@ -1194,6 +1194,46 @@ launch_claude() {
     rm -f "$merged_settings"
 }
 
+# ─── 升级 Claude Code ────────────────────────────────────────
+
+upgrade_claude() {
+    echo ""
+    echo -e "${BLU}╔═══════════════════════════════════╗${NC}"
+    echo -e "${BLU}║     升级 Claude Code              ║${NC}"
+    echo -e "${BLU}╚═══════════════════════════════════╝${NC}"
+    echo ""
+
+    local cur_ver=""
+    if command -v claude &>/dev/null; then
+        cur_ver=$(claude --version 2>/dev/null) || true
+    fi
+    if [[ -n "$cur_ver" ]]; then
+        echo -e "  当前版本: ${cur_ver}"
+    else
+        echo -e "  ${YLW}⚠ 未检测到已安装的 Claude Code${NC}"
+    fi
+
+    echo -e "  ${DIM}通过 npm 升级到最新版本...${NC}"
+    echo ""
+
+    npm install -g @anthropic-ai/claude-code
+
+    local new_ver=""
+    if command -v claude &>/dev/null; then
+        new_ver=$(claude --version 2>/dev/null) || true
+    fi
+    if [[ -n "$new_ver" ]]; then
+        echo ""
+        echo -e "  ${GRN}✓ 升级完成: ${new_ver}${NC}"
+    else
+        echo ""
+        echo -e "  ${GRN}✓ 升级完成${NC}"
+    fi
+
+    echo ""
+    read -p "  按回车继续..."
+}
+
 # ─── 帮助 ────────────────────────────────────────────────────
 
 show_help() {
@@ -1208,6 +1248,7 @@ show_help() {
     printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} remove [模型名]" "删除模型配置"
     printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} sync [模型名]" "同步 MCP/插件到指定模型"
     printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} upgrade" "升级 DeepSeek 配置补齐扩展字段"
+    printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} update" "升级 Claude Code 到最新版"
     printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} reset" "重置所有配置"
     printf "  ${GREEN}%-22s${NC} %s\n" "${CMD_NAME} -h" "显示此帮助"
     echo ""
@@ -1237,7 +1278,7 @@ main() {
         # 进入交互选择
         while true; do
             show_menu
-            read -e -p "  请输入编号或名称 (q=退出 a=添加 e=编辑 r=删除 h=帮助): " choice
+            read -e -p "  请输入编号或名称 (q=退出 a=添加 e=编辑 r=删除 u=升级 h=帮助): " choice
 
             if [[ -z "$choice" ]]; then
                 echo -e "${RED}  请输入选项${NC}"
@@ -1276,6 +1317,10 @@ main() {
                     scan_models "$CONFIG_DIR"
                     echo ""
                     read -p "  按回车继续..."
+                    continue
+                    ;;
+                u|U)
+                    upgrade_claude
                     continue
                     ;;
             esac
@@ -1324,6 +1369,10 @@ main() {
             ;;
         upgrade)
             upgrade_models
+            exit $?
+            ;;
+        update|upgrade-claude)
+            upgrade_claude
             exit $?
             ;;
         reset)
