@@ -1220,7 +1220,16 @@ upgrade_claude() {
     local npm_prefix
     npm_prefix=$(npm config get prefix 2>/dev/null)
     if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "$npm_prefix" ]] && [[ ! -w "$npm_prefix/lib/node_modules" ]]; then
-        npm_cmd="sudo npm"
+        if sudo -n true 2>/dev/null; then
+            npm_cmd="sudo npm"
+        else
+            echo -e "  ${YLW}需要 root 权限，请手动运行:${NC}"
+            echo ""
+            echo -e "    ${BOLD}sudo npm install -g @anthropic-ai/claude-code${NC}"
+            echo ""
+            read -p "  按回车继续..."
+            return
+        fi
     fi
 
     $npm_cmd install -g @anthropic-ai/claude-code
