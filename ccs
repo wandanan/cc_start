@@ -1231,6 +1231,14 @@ upgrade_claude() {
 
     echo -e "  ${DIM}通过 npm 升级到最新版本 (约 200MB，下载较慢请耐心等待)...${NC}"
 
+    # Clean up stale npm temp directories from previous interrupted installs
+    local pkg_dir="$npm_prefix/lib/node_modules/@anthropic-ai"
+    if [[ -d "$pkg_dir" ]]; then
+        local sudo_prefix=""
+        [[ "$npm_cmd" == "sudo npm" ]] && sudo_prefix="sudo"
+        $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
+    fi
+
     $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code &
     local npm_pid=$!
     local spin='-\|/'

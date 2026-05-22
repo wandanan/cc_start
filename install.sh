@@ -169,6 +169,14 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
         fi
     fi
 
+    # Clean up stale npm temp directories from previous interrupted installs
+    pkg_dir="$npm_prefix/lib/node_modules/@anthropic-ai"
+    if [[ -d "$pkg_dir" ]]; then
+        sudo_prefix=""
+        [[ "$npm_cmd" == "sudo npm" ]] && sudo_prefix="sudo"
+        $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
+    fi
+
     if spin_run "安装 Claude Code (约 200MB)" $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
         CLAUDE_VER=$(claude --version 2>/dev/null) || true
         step_ok "Claude Code 安装成功"
