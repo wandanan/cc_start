@@ -136,11 +136,24 @@ fi
 
 if [[ "$CLAUDE_OK" == "0" ]]; then
     step_info "通过 npm 安装 Claude Code..."
-    if npm install -g @anthropic-ai/claude-code; then
+
+    local npm_cmd="npm"
+    local npm_prefix
+    npm_prefix=$(npm config get prefix 2>/dev/null)
+    if [[ "$OSTYPE" == "linux-gnu"* ]] && [[ -n "$npm_prefix" ]] && [[ ! -w "$npm_prefix/lib/node_modules" ]]; then
+        if sudo -n true 2>/dev/null; then
+            npm_cmd="sudo npm"
+        else
+            step_fail "需要 root 权限，请手动执行: sudo npm install -g @anthropic-ai/claude-code"
+            exit 1
+        fi
+    fi
+
+    if $npm_cmd install -g @anthropic-ai/claude-code; then
         CLAUDE_VER=$(claude --version 2>/dev/null) || true
         step_ok "Claude Code 安装成功"
     else
-        step_fail "安装失败，请手动执行: npm install -g @anthropic-ai/claude-code"
+        step_fail "安装失败，请手动执行: $npm_cmd install -g @anthropic-ai/claude-code"
         exit 1
     fi
 fi
