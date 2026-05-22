@@ -662,7 +662,8 @@ add_model() {
         local compact_window=""
         echo ""
         echo -e "  ${BOLD}扩展配置${NC}  ${DIM}(直接回车使用默认值)${NC}"
-        echo -e "  ${DIM}Effort Level 控制推理深度，Compact Window 控制自动压缩行为${NC}"
+        echo -e "  ${DIM}Effort Level 控制推理深度（非推理模型可能不生效）${NC}"
+        echo -e "  ${DIM}Compact Window 控制自动压缩行为（非百万上下文模型可能不生效）${NC}"
         read -e -p "    Effort Level [max]: " effort_level
         [[ -z "$effort_level" ]] && effort_level="max"
         read -e -p "    自动压缩窗口上限 [400000]: " compact_window
@@ -810,6 +811,8 @@ edit_model() {
     [[ -z "$subagent_model" ]] && subagent_model="${cur_subagent:-$name}"
 
     # 扩展字段（所有模型通用）
+    echo -e "  ${DIM}Effort Level 控制推理深度（非推理模型可能不生效）${NC}"
+    echo -e "  ${DIM}Compact Window 控制自动压缩行为（非百万上下文模型可能不生效）${NC}"
     local effort_level="$cur_effort"
     local compact_window="$cur_compact"
     read -e -p "    Effort Level [${cur_effort:-max}]: " effort_level
