@@ -166,6 +166,16 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
         fi
     fi
 
+    # Bypass proxy during install (npm to local /usr/local doesn't need it)
+    if [[ -n "${http_proxy}${https_proxy}${HTTP_PROXY}${HTTPS_PROXY}" ]]; then
+        step_warn "检测到代理环境，本次安装将绕过代理"
+        save_http_proxy="$http_proxy"
+        save_https_proxy="$https_proxy"
+        save_HTTP_PROXY="$HTTP_PROXY"
+        save_HTTPS_PROXY="$HTTPS_PROXY"
+        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+    fi
+
     step_info "安装 Claude Code (约 200MB，下载较慢请耐心等待)..."
     install_ok=0
 

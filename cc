@@ -1250,6 +1250,16 @@ upgrade_claude() {
         fi
     fi
 
+    # Bypass proxy during upgrade (npm to local /usr/local doesn't need it)
+    local save_http_proxy="$http_proxy"
+    local save_https_proxy="$https_proxy"
+    local save_HTTP_PROXY="$HTTP_PROXY"
+    local save_HTTPS_PROXY="$HTTPS_PROXY"
+    if [[ -n "${http_proxy}${https_proxy}${HTTP_PROXY}${HTTPS_PROXY}" ]]; then
+        echo -e "  ${DIM}检测到代理，本次升级将绕过代理${NC}"
+        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+    fi
+
     local upgrade_ok=0
     if $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
         upgrade_ok=1
