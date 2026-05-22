@@ -1240,24 +1240,30 @@ upgrade_claude() {
         $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
     fi
 
-    # Auto-switch to npmmirror if npmjs.org is slow
+    # Force npmmirror for faster downloads
     local saved_registry=""
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if ! curl -s -o /dev/null --max-time 5 "https://registry.npmjs.org" 2>/dev/null; then
-            echo -e "  ${YLW}npmjs.org 访问缓慢，切换至 npmmirror 镜像${NC}"
-            saved_registry=$(npm config get registry 2>/dev/null)
+        saved_registry=$(npm config get registry 2>/dev/null)
+        if [[ "$saved_registry" != "https://registry.npmmirror.com" ]]; then
+            echo -e "  ${DIM}切换至 npmmirror 镜像加速下载${NC}"
             $npm_cmd config set registry https://registry.npmmirror.com
+        else
+            saved_registry=""
         fi
     fi
 
-    # Bypass proxy during upgrade (npm to local /usr/local doesn't need it)
+    # If proxy is set, test direct connection; keep proxy if direct is blocked
     local save_http_proxy="$http_proxy"
     local save_https_proxy="$https_proxy"
     local save_HTTP_PROXY="$HTTP_PROXY"
     local save_HTTPS_PROXY="$HTTPS_PROXY"
     if [[ -n "${http_proxy}${https_proxy}${HTTP_PROXY}${HTTPS_PROXY}" ]]; then
-        echo -e "  ${DIM}检测到代理，本次升级将绕过代理${NC}"
-        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+        if curl -s -o /dev/null --max-time 3 --noproxy '*' "https://registry.npmmirror.com" 2>/dev/null; then
+            echo -e "  ${DIM}直连 npmmirror 可达，本次升级绕过代理${NC}"
+            unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+        else
+            echo -e "  ${YLW}直连不可达，保留代理（可能较慢）${NC}"
+        fi
     fi
 
     local upgrade_ok=0

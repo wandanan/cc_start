@@ -156,24 +156,30 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
         $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
     fi
 
-    # Auto-switch to npmmirror if npmjs.org is unreachable
+    # Force npmmirror for faster downloads
     saved_registry=""
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if ! curl -s -o /dev/null --max-time 5 "https://registry.npmjs.org" 2>/dev/null; then
-            step_warn "npmjs.org 访问缓慢，切换至 npmmirror 镜像"
-            saved_registry=$(npm config get registry 2>/dev/null)
+        saved_registry=$(npm config get registry 2>/dev/null)
+        if [[ "$saved_registry" != "https://registry.npmmirror.com" ]]; then
+            step_info "切换至 npmmirror 镜像加速下载"
             $npm_cmd config set registry https://registry.npmmirror.com
+        else
+            saved_registry=""  # already on mirror, no need to restore
         fi
     fi
 
-    # Bypass proxy during install (npm to local /usr/local doesn't need it)
+    # If proxy is set, test direct connection; keep proxy if direct is blocked
     if [[ -n "${http_proxy}${https_proxy}${HTTP_PROXY}${HTTPS_PROXY}" ]]; then
-        step_warn "检测到代理环境，本次安装将绕过代理"
-        save_http_proxy="$http_proxy"
-        save_https_proxy="$https_proxy"
-        save_HTTP_PROXY="$HTTP_PROXY"
-        save_HTTPS_PROXY="$HTTPS_PROXY"
-        unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+        if curl -s -o /dev/null --max-time 3 --noproxy '*' "https://registry.npmmirror.com" 2>/dev/null; then
+            step_info "直连 npmmirror 可达，本次安装绕过代理"
+            save_http_proxy="$http_proxy"
+            save_https_proxy="$https_proxy"
+            save_HTTP_PROXY="$HTTP_PROXY"
+            save_HTTPS_PROXY="$HTTPS_PROXY"
+            unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
+        else
+            step_warn "直连不可达，保留代理（可能较慢）"
+        fi
     fi
 
     step_info "安装 Claude Code (约 200MB，下载较慢请耐心等待)..."
