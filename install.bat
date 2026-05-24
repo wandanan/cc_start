@@ -67,8 +67,17 @@ if "%NODE_OK%"=="0" (
 )
 
 :: Check Claude Code
+set "CLAUDE_OK=0"
 where claude >nul 2>&1
-if errorlevel 1 (
+if not errorlevel 1 (
+    for /f "tokens=*" %%v in ('claude --version 2^>nul') do (
+        if not "%%v"=="" (
+            echo [OK] Claude Code: %%v
+            set "CLAUDE_OK=1"
+        )
+    )
+)
+if "!CLAUDE_OK!"=="0" (
     echo [WARN] Claude Code not found, installing...
     call npm install -g @anthropic-ai/claude-code
     if errorlevel 1 (
@@ -76,9 +85,18 @@ if errorlevel 1 (
         pause
         exit /b 1
     )
-    echo [OK] Claude Code installed
-) else (
-    echo [OK] Claude Code found
+    :: Verify installation succeeded
+    for /f "tokens=*" %%v in ('claude --version 2^>nul') do (
+        if not "%%v"=="" (
+            echo [OK] Claude Code: %%v
+            set "CLAUDE_OK=1"
+        )
+    )
+    if "!CLAUDE_OK!"=="0" (
+        echo [ERROR] Claude Code installed but not working
+        pause
+        exit /b 1
+    )
 )
 
 :: Set installation directory
