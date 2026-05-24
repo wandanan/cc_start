@@ -1,5 +1,6 @@
 @echo off
 setlocal EnableDelayedExpansion
+set "PS_CMD=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 
 echo.
 echo ===================================
@@ -26,10 +27,8 @@ if "%NODE_OK%"=="0" (
         echo [INFO] Installing Node.js LTS via winget...
         winget install OpenJS.NodeJS.LTS --silent --accept-source-agreements --accept-package-agreements >nul 2>&1
         if not errorlevel 1 (
-            :: Refresh PATH for this session
-            for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "SYS_PATH=%%b"
-            for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "USR_PATH=%%b"
-            set "PATH=!USR_PATH!;!SYS_PATH!"
+            :: Prepend Node.js dir to PATH (do not replace entire PATH)
+            if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;!PATH!"
             node -v >nul 2>&1
             if not errorlevel 1 (
                 for /f "tokens=*" %%a in ('node -v') do echo [OK] Node.js: %%a (installed via winget)
@@ -42,15 +41,13 @@ if "%NODE_OK%"=="0" (
         :: Fallback: download MSI via PowerShell
         echo [INFO] Trying direct download...
         set "NODE_MSI=%TEMP%\node-lts.msi"
-        powershell.exe -NoProfile -Command "try { [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.18.2/node-v20.18.2-x64.msi' -OutFile $env:NODE_MSI -UseBasicParsing } catch { exit 1 }"
+        "!PS_CMD!" -NoProfile -Command "try { [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.18.2/node-v20.18.2-x64.msi' -OutFile $env:NODE_MSI -UseBasicParsing } catch { exit 1 }"
         if exist "!NODE_MSI!" (
             echo [INFO] Installing Node.js...
             msiexec /i "!NODE_MSI!" /qn /norestart >nul 2>&1
             if not errorlevel 1 (
-                :: Refresh PATH
-                for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "SYS_PATH=%%b"
-                for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "USR_PATH=%%b"
-                set "PATH=!USR_PATH!;!SYS_PATH!"
+                :: Prepend Node.js dir to PATH
+                if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;!PATH!"
                 node -v >nul 2>&1
                 if not errorlevel 1 (
                     for /f "tokens=*" %%a in ('node -v') do echo [OK] Node.js: %%a (installed via MSI)
@@ -152,12 +149,12 @@ if exist "%~dp0models" (
 :: Check and fix skipWebFetchPreflight in existing configs
 echo.
 echo Checking WebFetch preflight config...
-powershell.exe -NoProfile -Command "$cfgDir=Join-Path $env:USERPROFILE '.claude\models'; if(Test-Path $cfgDir){ $c=0; ls $cfgDir\*.json -ea 0|ForEach-Object{ $t=[IO.File]::ReadAllText($_.FullName); if($t.Contains('skipWebFetchPreflight')){ Write-Host ('[OK] Already ok: '+$_.Name) }else{ $t=$t.TrimEnd() -replace '\}\s*$', ([char]44+[char]10+'  '+[char]34+'skipWebFetchPreflight'+[char]34+': true'+[char]10+'}'); [IO.File]::WriteAllText($_.FullName,$t); Write-Host ('[OK] Updated: '+$_.Name); $c++ }}; if($c -eq 0){ Write-Host '[INFO] All configs already have skipWebFetchPreflight' } } else { Write-Host '[INFO] No existing configs to check' }"
+"!PS_CMD!" -NoProfile -Command "$cfgDir=Join-Path $env:USERPROFILE '.claude\models'; if(Test-Path $cfgDir){ $c=0; ls $cfgDir\*.json -ea 0|ForEach-Object{ $t=[IO.File]::ReadAllText($_.FullName); if($t.Contains('skipWebFetchPreflight')){ Write-Host ('[OK] Already ok: '+$_.Name) }else{ $t=$t.TrimEnd() -replace '\}\s*$', ([char]44+[char]10+'  '+[char]34+'skipWebFetchPreflight'+[char]34+': true'+[char]10+'}'); [IO.File]::WriteAllText($_.FullName,$t); Write-Host ('[OK] Updated: '+$_.Name); $c++ }}; if($c -eq 0){ Write-Host '[INFO] All configs already have skipWebFetchPreflight' } } else { Write-Host '[INFO] No existing configs to check' }"
 
 :: Update PATH
 echo.
 echo [INFO] Updating PATH...
-powershell.exe -NoProfile -Command "$d='%INSTALL_DIR%'; $p=[Environment]::GetEnvironmentVariable('Path','User'); $clean=$p -split ';' | Where-Object{$_ -ne '' -and $_ -ne $d}; $new=@($d)+@($clean) -join ';'; [Environment]::SetEnvironmentVariable('Path',$new,'User'); Write-Host '[OK] PATH updated'; Write-Host '[IMPORTANT] Please reopen terminal to use cc/ccs'"
+"!PS_CMD!" -NoProfile -Command "$d='%INSTALL_DIR%'; $p=[Environment]::GetEnvironmentVariable('Path','User'); $clean=$p -split ';' | Where-Object{$_ -ne '' -and $_ -ne $d}; $new=@($d)+@($clean) -join ';'; [Environment]::SetEnvironmentVariable('Path',$new,'User'); Write-Host '[OK] PATH updated'; Write-Host '[IMPORTANT] Please reopen terminal to use cc/ccs'"
 
 :: Finish
 echo.
