@@ -30,6 +30,8 @@ CC Start 让你彻底告别这些折腾：
 
 ## 一分钟安装
 
+> **前置依赖**：请先安装 [Git](https://git-scm.com/downloads)（Windows 用户还需要 Git Bash 来运行脚本）。
+
 ```bash
 git clone https://github.com/wandanan/cc_start.git && cd cc_start
 
@@ -185,10 +187,12 @@ claude --settings ~/.claude/models/qwen.json
 
 ## 依赖
 
+- [Git](https://git-scm.com/downloads) — Windows 用户需要安装 Git（含 Git Bash）；Mac/Linux 通常已预装
 - [Claude Code](https://claude.ai/code) — 安装脚本会自动检测并在缺失时通过 npm 安装
-- Git Bash (Windows) 或 Bash 4.0+ (Mac/Linux)
+- Bash 4.0+
   - macOS：系统自带 bash 3.2，需 `brew install bash`
   - Linux：主流发行版自带 bash 4.x/5.x，无需额外安装
+  - Windows：安装 Git 时自带 Git Bash，无需额外操作
 
 ## License
 
