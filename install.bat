@@ -8,14 +8,66 @@ echo ===================================
 echo.
 
 :: Check Node.js
+set "NODE_OK=0"
 node -v >nul 2>&1
-if errorlevel 1 (
-    echo [WARN] Node.js not found, please install manually.
-    echo Download from: https://nodejs.org/
-    pause
-    exit /b 1
+if not errorlevel 1 (
+    for /f "tokens=*" %%a in ('node -v') do (
+        echo [OK] Node.js: %%a
+        set "NODE_OK=1"
+    )
 )
-for /f "tokens=*" %%a in ('node -v') do echo [OK] Node.js: %%a
+
+if "%NODE_OK%"=="0" (
+    echo [WARN] Node.js not found, attempting auto-install...
+
+    :: Try winget first
+    where winget >nul 2>&1
+    if not errorlevel 1 (
+        echo [INFO] Installing Node.js LTS via winget...
+        winget install OpenJS.NodeJS.LTS --silent --accept-source-agreements --accept-package-agreements >nul 2>&1
+        if not errorlevel 1 (
+            :: Refresh PATH for this session
+            for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "SYS_PATH=%%b"
+            for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "USR_PATH=%%b"
+            set "PATH=!USR_PATH!;!SYS_PATH!"
+            node -v >nul 2>&1
+            if not errorlevel 1 (
+                for /f "tokens=*" %%a in ('node -v') do echo [OK] Node.js: %%a (installed via winget)
+                set "NODE_OK=1"
+            )
+        )
+    )
+
+    if "!NODE_OK!"=="0" (
+        :: Fallback: download MSI via PowerShell
+        echo [INFO] Trying direct download...
+        set "NODE_MSI=%TEMP%\node-lts.msi"
+        powershell.exe -NoProfile -Command "try { [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://nodejs.org/dist/v20.18.2/node-v20.18.2-x64.msi' -OutFile $env:NODE_MSI -UseBasicParsing } catch { exit 1 }"
+        if exist "!NODE_MSI!" (
+            echo [INFO] Installing Node.js...
+            msiexec /i "!NODE_MSI!" /qn /norestart >nul 2>&1
+            if not errorlevel 1 (
+                :: Refresh PATH
+                for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v Path 2^>nul') do set "SYS_PATH=%%b"
+                for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v Path 2^>nul') do set "USR_PATH=%%b"
+                set "PATH=!USR_PATH!;!SYS_PATH!"
+                node -v >nul 2>&1
+                if not errorlevel 1 (
+                    for /f "tokens=*" %%a in ('node -v') do echo [OK] Node.js: %%a (installed via MSI)
+                    set "NODE_OK=1"
+                )
+            )
+            del "!NODE_MSI!" >nul 2>&1
+        )
+    )
+
+    if "!NODE_OK!"=="0" (
+        echo [ERROR] Auto-install failed. Please install Node.js manually:
+        echo         https://nodejs.org/
+        pause
+        exit /b 1
+    )
+)
 
 :: Check Claude Code
 where claude >nul 2>&1
