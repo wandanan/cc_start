@@ -510,8 +510,12 @@ select_model() {
 
     local i=1
     local keys=()
-    for key in "${!MODELS[@]}"; do
-        keys+=("$key")
+
+    while IFS= read -r line; do
+        keys+=("$line")
+    done < <(for k in "${!MODELS[@]}"; do echo "$k"; done | sort)
+
+    for key in "${keys[@]}"; do
         printf "  ${GREEN}%d)${NC}  %-14s %s\n" "$i" "$key" "${MODEL_DESCS[$key]}"
         ((i++))
     done
@@ -585,7 +589,11 @@ list_models() {
     echo ""
     printf "  ${BOLD}%-16s %s${NC}\n" "命令名称" "模型 ID"
     printf "  ${DIM}%-16s %s${NC}\n" "────────────────" "────────────────────"
-    for key in "${!MODELS[@]}"; do
+    local sorted_keys=()
+    while IFS= read -r line; do
+        sorted_keys+=("$line")
+    done < <(for k in "${!MODELS[@]}"; do echo "$k"; done | sort)
+    for key in "${sorted_keys[@]}"; do
         printf "  ${GREEN}%-16s${NC} %s\n" "$key" "${MODEL_DESCS[$key]}"
     done
     echo ""
