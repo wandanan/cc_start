@@ -242,15 +242,7 @@ fi
 if [[ "$SKIP_SCRIPTS" == "0" ]]; then
     cp "$SCRIPT_DIR/cc" "$INSTALL_DIR/cc"
     chmod +x "$INSTALL_DIR/cc"
-    sed -i 's/\r$//' "$INSTALL_DIR/cc"
     ln -sf "$INSTALL_DIR/cc" "$INSTALL_DIR/ccs"
-    # 创建 claude 符号链接，确保 cc 运行时能找到二进制
-    # （cc 脚本不加载 .bashrc，nvm 管理的 node/npm 不在 PATH 中）
-    local_claude=$(which claude 2>/dev/null || true)
-    if [[ -n "$local_claude" && "$local_claude" != "$INSTALL_DIR/claude" ]]; then
-        ln -sf "$local_claude" "$INSTALL_DIR/claude"
-        step_ok "claude → ${local_claude}"
-    fi
     step_ok "cc  → ${INSTALL_DIR}/cc"
     step_ok "ccs → ${INSTALL_DIR}/ccs"
 fi
@@ -259,6 +251,24 @@ fi
 # Step 4: 创建配置目录
 # ═══════════════════════════════════════════════════════════════
 step_begin "初始化配置目录" "为模型配置文件创建存储位置..."
+
+# Install TypeScript CLI sidecar. Node is guaranteed by Step 1 above.
+if [[ -f "$SCRIPT_DIR/package.json" ]]; then
+    step_info "Building TypeScript CLI..."
+    (
+        cd "$SCRIPT_DIR"
+        if [[ ! -x "node_modules/.bin/tsc" ]]; then
+            npm install
+        fi
+        npm run build
+    )
+
+    APP_DIR="$HOME/.local/share/cc-start"
+    rm -rf "$APP_DIR/dist"
+    mkdir -p "$APP_DIR/dist"
+    cp -R "$SCRIPT_DIR/dist/." "$APP_DIR/dist/"
+    step_ok "TypeScript CLI installed"
+fi
 
 mkdir -p "$HOME/.claude/models"
 step_ok "~/.claude/models/"

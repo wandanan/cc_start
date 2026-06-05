@@ -138,8 +138,45 @@ if "%SKIP_SCRIPTS%"=="1" (
     copy /Y "%~dp0cc" "%INSTALL_DIR%\ccs" >nul
     copy /Y "%~dp0ccs.cmd" "%INSTALL_DIR%\ccs.cmd" >nul
     copy /Y "%~dp0init.ps1" "%INSTALL_DIR%\init.ps1" >nul
-    echo [OK] Scripts installed
+    echo [OK] Wrapper scripts installed
     echo [OK] Commands available: cc and ccs
+)
+
+:: Build and install TypeScript CLI
+if exist "%~dp0package.json" (
+    echo.
+    echo [INFO] Building TypeScript CLI...
+    pushd "%~dp0" >nul
+    if not exist "node_modules\typescript\bin\tsc" (
+        call npm install
+        if errorlevel 1 (
+            popd >nul
+            echo [ERROR] Failed to install TypeScript build dependencies
+            pause
+            exit /b 1
+        )
+    )
+    call npm run build
+    if errorlevel 1 (
+        popd >nul
+        echo [ERROR] Failed to build TypeScript CLI
+        pause
+        exit /b 1
+    )
+    popd >nul
+
+    set "APP_DIR=%USERPROFILE%\.local\share\cc-start"
+    if not exist "!APP_DIR!" mkdir "!APP_DIR!" >nul 2>&1
+    if exist "!APP_DIR!\dist" rmdir /S /Q "!APP_DIR!\dist" >nul 2>&1
+    if exist "!APP_DIR!\dist" del /F /Q "!APP_DIR!\dist" >nul 2>&1
+    mkdir "!APP_DIR!\dist" >nul 2>&1
+    xcopy /E /I /Y "%~dp0dist" "!APP_DIR!\dist" >nul
+    if errorlevel 1 (
+        echo [ERROR] Failed to install TypeScript CLI files
+        pause
+        exit /b 1
+    )
+    echo [OK] TypeScript CLI installed
 )
 
 :: Create config directory
@@ -186,6 +223,8 @@ echo   cc / ccs ^<model^>     - Start specified model
 echo   cc / ccs add          - Add new model config
 echo   cc / ccs remove       - Remove model config
 echo   cc / ccs reset        - Reset all configs
+echo   cc doctor             - Validate and repair model configs
+echo   cc doctor --repair     - Auto-fix model configs
 echo.
 echo Config files location:
 echo   %%USERPROFILE%%\.claude\models\

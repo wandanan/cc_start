@@ -31,13 +31,16 @@ CC Start is a multi-model launcher for Claude Code. It lets users switch between
 
 ```json
 {
-  "ANTHROPIC_AUTH_TOKEN": "...",
-  "ANTHROPIC_BASE_URL": "https://api.example.com/anthropic",
-  "ANTHROPIC_MODEL": "model-id",
-  "ANTHROPIC_DEFAULT_OPUS_MODEL": "model-id",
-  "ANTHROPIC_DEFAULT_SONNET_MODEL": "model-id",
-  "ANTHROPIC_DEFAULT_HAIKU_MODEL": "subagent-model-id",
-  "CLAUDE_CODE_SUBAGENT_MODEL": "subagent-model-id"
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "...",
+    "ANTHROPIC_BASE_URL": "https://api.example.com/anthropic",
+    "ANTHROPIC_MODEL": "model-id",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "model-id",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "model-id",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "subagent-model-id",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "subagent-model-id"
+  },
+  "skipWebFetchPreflight": true
 }
 ```
 
@@ -48,6 +51,7 @@ DeepSeek configs additionally include `CLAUDE_CODE_EFFORT_LEVEL` and `CLAUDE_COD
 DeepSeek API URLs (containing "deepseek") trigger automatic configuration:
 - Model IDs get `[1m]` suffix appended for the 1M-token context window
 - Default env fields (effort level=max, compact window=400000) are written
+- Launches automatically include `--bare` to avoid DeepSeek's current Anthropic-compatible endpoint rejecting Claude Code system-role messages
 - Auto-migration on every `scan_models()` call silently upgrades stale DeepSeek configs
 
 ### Platform compatibility
