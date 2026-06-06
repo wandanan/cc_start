@@ -1,6 +1,16 @@
 @echo off
 setlocal EnableDelayedExpansion
 set "PS_CMD=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
+set "NPM_REGISTRY=https://registry.npmmirror.com"
+set "NPM_NO_PROXY=--proxy=false --https-proxy=false"
+
+:: Do not let npm package installs inherit terminal proxy settings.
+set "HTTP_PROXY="
+set "HTTPS_PROXY="
+set "http_proxy="
+set "https_proxy="
+set "ALL_PROXY="
+set "all_proxy="
 
 echo.
 echo ===================================
@@ -79,7 +89,8 @@ if not errorlevel 1 (
 )
 if "!CLAUDE_OK!"=="0" (
     echo [WARN] Claude Code not found, installing...
-    call npm install -g @anthropic-ai/claude-code
+    echo [INFO] Using npm registry: !NPM_REGISTRY!
+    call npm install -g @anthropic-ai/claude-code --registry=!NPM_REGISTRY! !NPM_NO_PROXY!
     if errorlevel 1 (
         echo [ERROR] Failed to install Claude Code
         pause
@@ -148,7 +159,8 @@ if exist "%~dp0package.json" (
     echo [INFO] Building TypeScript CLI...
     pushd "%~dp0" >nul
     if not exist "node_modules\typescript\bin\tsc" (
-        call npm install
+        echo [INFO] Using npm registry: !NPM_REGISTRY!
+        call npm install --registry=!NPM_REGISTRY! !NPM_NO_PROXY!
         if errorlevel 1 (
             popd >nul
             echo [ERROR] Failed to install TypeScript build dependencies

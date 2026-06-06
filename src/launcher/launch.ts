@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import path from "node:path";
 import { ModelRecord } from "../config/model-config";
 import { isDeepSeekConfig, deepSeekExtraClaudeArgs } from "../providers/deepseek";
 import { findClaudeBin } from "../platform/find-claude";
@@ -7,6 +8,12 @@ import { createMergedSettings } from "./merge-settings";
 import { buildClaudeEnv } from "./env";
 import { arrowSelect } from "../ui/arrow-select";
 import { BLU, GRN, BOLD, DIM, NC } from "../ui/colors";
+
+function needsWindowsCommandShell(command: string): boolean {
+  if (process.platform !== "win32") return false;
+  const ext = path.extname(command).toLowerCase();
+  return ext === ".cmd" || ext === ".bat";
+}
 
 export async function launchClaude(
   model: ModelRecord,
@@ -70,7 +77,7 @@ export async function launchClaude(
   const proc = spawnSync(claudeCmd[0], [...claudeCmd.slice(1), ...claudeArgs], {
     env,
     stdio: "inherit",
-    shell: false,
+    shell: needsWindowsCommandShell(claudeCmd[0]),
   });
 
   // Clean up temp file

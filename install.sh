@@ -4,6 +4,12 @@
 
 set -e
 
+NPM_REGISTRY="https://registry.npmmirror.com"
+
+npm_direct() {
+    env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY -u all_proxy -u ALL_PROXY "$@"
+}
+
 # ── 颜色 ──────────────────────────────────────────────────────
 CYA='\033[0;36m'
 BLU='\033[0;34m'
@@ -156,46 +162,16 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
         $sudo_prefix rm -rf "$pkg_dir"/.claude-code-* 2>/dev/null || true
     fi
 
-    # Force npmmirror for faster downloads
-    saved_registry=""
-    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        saved_registry=$(npm config get registry 2>/dev/null)
-        if [[ "$saved_registry" != "https://registry.npmmirror.com" ]]; then
-            step_info "切换至 npmmirror 镜像加速下载"
-            $npm_cmd config set registry https://registry.npmmirror.com
-        else
-            saved_registry=""  # already on mirror, no need to restore
-        fi
-    fi
-
-    # If proxy is set, test direct connection; keep proxy if direct is blocked
-    if [[ -n "${http_proxy}${https_proxy}${HTTP_PROXY}${HTTPS_PROXY}" ]]; then
-        if curl -s -o /dev/null --max-time 3 --noproxy '*' "https://registry.npmmirror.com" 2>/dev/null; then
-            step_info "直连 npmmirror 可达，本次安装绕过代理"
-            save_http_proxy="$http_proxy"
-            save_https_proxy="$https_proxy"
-            save_HTTP_PROXY="$HTTP_PROXY"
-            save_HTTPS_PROXY="$HTTPS_PROXY"
-            unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY
-        else
-            step_warn "直连不可达，保留代理（可能较慢）"
-        fi
-    fi
-
     step_info "安装 Claude Code (约 200MB，下载较慢请耐心等待)..."
     install_ok=0
 
-    if $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code; then
+    step_info "Using npm registry: $NPM_REGISTRY"
+    if npm_direct $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code --registry="$NPM_REGISTRY"; then
         CLAUDE_VER=$(claude --version 2>/dev/null) || true
         step_ok "Claude Code 安装成功"
         install_ok=1
     else
         step_fail "安装失败，请手动执行: $npm_cmd install -g @anthropic-ai/claude-code"
-    fi
-
-    # Restore original registry
-    if [[ -n "$saved_registry" ]]; then
-        $npm_cmd config set registry "$saved_registry"
     fi
 
     if [[ $install_ok -eq 0 ]]; then
@@ -258,7 +234,8 @@ if [[ -f "$SCRIPT_DIR/package.json" ]]; then
     (
         cd "$SCRIPT_DIR"
         if [[ ! -x "node_modules/.bin/tsc" ]]; then
-            npm install
+            step_info "Using npm registry: $NPM_REGISTRY"
+            npm_direct npm install --registry="$NPM_REGISTRY"
         fi
         npm run build
     )
