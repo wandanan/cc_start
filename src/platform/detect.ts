@@ -13,6 +13,17 @@ export function isMintty(): boolean {
   return process.env.TERM_PROGRAM === "mintty";
 }
 
+export function isWsl(): boolean {
+  // WSL: Linux kernel reports "microsoft" or "WSL" in /proc/version
+  try {
+    const fs = require("node:fs");
+    const version = fs.readFileSync("/proc/version", "utf8").toLowerCase();
+    return version.includes("microsoft") || version.includes("wsl");
+  } catch {
+    return false;
+  }
+}
+
 export function isMsys(): boolean {
   const ostype = process.env.OSTYPE || "";
   return ostype === "msys" || ostype === "cygwin" || !!process.env.MSYSTEM;

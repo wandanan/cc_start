@@ -71,6 +71,9 @@ export async function launchClaude(
   if (mode === "skip-perms") {
     console.log(`  ${DIM}  模式: dangerously-skip-permissions${NC}`);
   }
+  console.log(`  ${DIM}  配置: ${mergedSettings}${NC}`);
+  console.log(`  ${DIM}  二进制: ${claudeBinStr}${NC}`);
+  console.log(`  ${DIM}  配置已写入: ${fs.existsSync(mergedSettings)}${NC}`);
   console.log("");
 
   // Launch Claude Code

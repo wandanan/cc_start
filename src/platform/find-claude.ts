@@ -2,9 +2,14 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
-import { isMsys, getPlatform } from "./detect";
+import { isMsys, isWsl, getPlatform } from "./detect";
 
 const IS_WINDOWS = getPlatform() === "windows";
+
+// WSL interop: Windows binaries mounted under /mnt/ can't see WSL filesystem paths
+function isWindowsInteropPath(p: string): boolean {
+  return /^\/mnt\/[a-zA-Z]/.test(p);
+}
 
 // 候选文件名因平台而异
 const CLAUDE_NAMES = IS_WINDOWS
@@ -133,16 +138,16 @@ function systemWhich(cmd: string): string | null {
 }
 
 export function findClaudeBin(): string {
-  // 1) PATH 查找（最快，命中率由终端环境决定）
+  // 1) 从 node 位置反向查找（最可靠 — 确保使用与当前 Node.js 同源的 claude，避免 WSL 下误用 Windows 版本）
+  const fromNode = findFromNode();
+  if (fromNode) return fromNode;
+
+  // 2) PATH 查找（fallback — 在 WSL/Linux 上跳过 Windows 路径，它们看不到 Linux 文件系统）
   const candidates = IS_WINDOWS ? ["claude.cmd", "claude.exe", "claude"] : ["claude"];
   for (const name of candidates) {
     const found = systemWhich(name);
-    if (found) return found;
+    if (found && !isWindowsInteropPath(found)) return found;
   }
-
-  // 2) 从 node 位置反向查找（最可靠，不依赖 PATH）
-  const fromNode = findFromNode();
-  if (fromNode) return fromNode;
 
   // 3) 常见固定路径
   const home = IS_WINDOWS
@@ -176,7 +181,7 @@ export function findClaudeBin(): string {
   // 5) 系统 PATH 中的 npx 作为最后尝试
   const npxName = IS_WINDOWS ? "npx.cmd" : "npx";
   const npxPath = systemWhich(npxName);
-  if (npxPath) {
+  if (npxPath && !isWindowsInteropPath(npxPath)) {
     return `${npxPath} -y @anthropic-ai/claude-code`;
   }
 

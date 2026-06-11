@@ -20,5 +20,5 @@ export function readJsonObject(filePath: string): JsonObject {
 }
 
 export function writeJsonObject(filePath: string, value: JsonObject): void {
-  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
 }
