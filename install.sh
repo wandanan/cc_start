@@ -113,6 +113,23 @@ if [[ "$needs_install" == "1" ]]; then
         nvm use 20 >/dev/null 2>&1
         nvm alias default 20 >/dev/null 2>&1
         step_ok "Node.js $(node -v) 安装成功"
+
+        # Auto-add nvm init to shell rc so node works in every session
+        SHELL_RC="$HOME/.bashrc"
+        [[ "$(basename "$SHELL")" == "zsh" ]] && SHELL_RC="$HOME/.zshrc"
+        if [[ -f "$SHELL_RC" ]] && [[ ! -w "$SHELL_RC" ]]; then
+            sudo chown "$USER:$(id -gn)" "$SHELL_RC" 2>/dev/null || true
+        fi
+        if ! grep -q 'nvm.sh' "$SHELL_RC" 2>/dev/null; then
+            cat >> "$SHELL_RC" << 'NVMINIT'
+
+# NVM (auto-added by CC Start)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+NVMINIT
+            step_info "nvm 初始化已写入 ${SHELL_RC}"
+        fi
     else
         step_fail "自动安装失败，请手动安装: https://nodejs.org/"
         exit 1
@@ -345,21 +362,23 @@ if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
     step_ok "PATH 已包含 ${INSTALL_DIR}"
 else
     step_warn "${INSTALL_DIR} 不在 PATH 中"
-    echo ""
 
-    SHELL_NAME=$(basename "$SHELL")
-    if [[ "$SHELL_NAME" == "zsh" ]]; then
-        echo -e "  ${BLU}→${NC} 请将以下内容添加到 ~/.zshrc:"
-        echo ""
-        echo -e "    ${BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
-        echo ""
-        echo -e "  ${BLU}→${NC} 然后执行: ${BOLD}source ~/.zshrc${NC}"
-    else
-        echo -e "  ${BLU}→${NC} 请将以下内容添加到 ~/.bashrc:"
-        echo ""
-        echo -e "    ${BOLD}export PATH=\"\$HOME/.local/bin:\$PATH\"${NC}"
-        echo ""
-        echo -e "  ${BLU}→${NC} 然后执行: ${BOLD}source ~/.bashrc${NC}"
+    SHELL_RC="$HOME/.bashrc"
+    [[ "$(basename "$SHELL")" == "zsh" ]] && SHELL_RC="$HOME/.zshrc"
+
+    # Fix ownership if root previously touched the file
+    if [[ -f "$SHELL_RC" ]] && [[ ! -w "$SHELL_RC" ]]; then
+        sudo chown "$USER:$(id -gn)" "$SHELL_RC" 2>/dev/null || true
+    fi
+
+    if ! grep -q '.local/bin' "$SHELL_RC" 2>/dev/null; then
+        cat >> "$SHELL_RC" << 'PATHINIT'
+
+# CC Start (auto-added)
+export PATH="$HOME/.local/bin:$PATH"
+PATHINIT
+        step_ok "PATH 已写入 ${SHELL_RC}"
+        step_info "执行 source ${SHELL_RC} 或新开终端即可生效"
     fi
 fi
 
