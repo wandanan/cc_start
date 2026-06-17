@@ -123,9 +123,10 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
             sed_i "\|export PATH=$d:\$PATH|d" "$rc" 2>/dev/null || true
             sed_i "\|export PATH=\"$d:\\\$PATH\"|d" "$rc" 2>/dev/null || true
         done
-        # Remove the CC Start comment lines
-        sed_i '/^# CC Start$/d' "$rc" 2>/dev/null || true
+        # Remove the CC Start comment lines (both old and new formats)
+        sed_i '/^# CC Start/d' "$rc" 2>/dev/null || true
         sed_i '/^# WSL proxy (CC Start)$/d' "$rc" 2>/dev/null || true
+        sed_i '/^export PATH=.*\/\.local\/bin:\$PATH/d' "$rc" 2>/dev/null || true
     fi
 done
 

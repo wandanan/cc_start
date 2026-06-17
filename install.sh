@@ -367,28 +367,42 @@ fi
 # ═══════════════════════════════════════════════════════════════
 step_begin "检查 PATH 配置" "确保安装目录在系统 PATH 中..."
 
-if [[ ":$PATH:" == *":$INSTALL_DIR:"* ]]; then
-    step_ok "PATH 已包含 ${INSTALL_DIR}"
-else
+SHELL_RC="$HOME/.bashrc"
+[[ "$(basename "$SHELL")" == "zsh" ]] && SHELL_RC="$HOME/.zshrc"
+
+# Fix ownership if root previously touched the file
+if [[ -f "$SHELL_RC" ]] && [[ ! -w "$SHELL_RC" ]]; then
+    sudo chown "$USER:$(id -gn)" "$SHELL_RC" 2>/dev/null || true
+fi
+
+# Always write PATH entry to shell rc so $INSTALL_DIR takes priority.
+# On macOS /usr/bin/cc (clang) shadows our launcher unless our dir comes first.
+needs_rc_write=0
+if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
     step_warn "${INSTALL_DIR} 不在 PATH 中"
+    needs_rc_write=1
+elif [[ "$(command -v cc 2>/dev/null)" != "$INSTALL_DIR/cc" ]]; then
+    step_warn "PATH 顺序不正确，cc 未指向 CC Start 启动器"
+    needs_rc_write=1
+else
+    step_ok "PATH 已包含 ${INSTALL_DIR} 且优先级正确"
+fi
 
-    SHELL_RC="$HOME/.bashrc"
-    [[ "$(basename "$SHELL")" == "zsh" ]] && SHELL_RC="$HOME/.zshrc"
-
-    # Fix ownership if root previously touched the file
-    if [[ -f "$SHELL_RC" ]] && [[ ! -w "$SHELL_RC" ]]; then
-        sudo chown "$USER:$(id -gn)" "$SHELL_RC" 2>/dev/null || true
+if [[ "$needs_rc_write" == "1" ]]; then
+    # Remove any previous CC Start PATH entry before adding a fresh one
+    if grep -q '# CC Start' "$SHELL_RC" 2>/dev/null; then
+        sed_i '/^# CC Start/d' "$SHELL_RC" 2>/dev/null || true
+        sed_i '/^export PATH=.*\/\.local\/bin:\$PATH/d' "$SHELL_RC" 2>/dev/null || true
+        sed_i "\|^export PATH=\"$INSTALL_DIR:\$PATH\"|d" "$SHELL_RC" 2>/dev/null || true
     fi
 
-    if ! grep -q '.local/bin' "$SHELL_RC" 2>/dev/null; then
-        cat >> "$SHELL_RC" << 'PATHINIT'
+    cat >> "$SHELL_RC" << PATHINIT
 
 # CC Start (auto-added)
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="${INSTALL_DIR}:\$PATH"
 PATHINIT
-        step_ok "PATH 已写入 ${SHELL_RC}"
-        step_info "新开终端或执行 source ${SHELL_RC} 即可生效"
-    fi
+    step_ok "PATH 已写入 ${SHELL_RC}"
+    step_info "新开终端或执行 source ${SHELL_RC} 即可生效"
 fi
 
 # Always prepend to PATH in current session and clear command hash.
