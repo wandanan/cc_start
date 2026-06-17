@@ -402,11 +402,10 @@ if [[ "$needs_rc_write" == "1" ]]; then
 export PATH="${INSTALL_DIR}:\$PATH"
 PATHINIT
     step_ok "PATH 已写入 ${SHELL_RC}"
-    step_info "新开终端或执行 source ${SHELL_RC} 即可生效"
 fi
 
-# Always prepend to PATH in current session and clear command hash.
-# On macOS, /usr/bin/cc (clang) would otherwise shadow our cc launcher.
+# Prepend to PATH in this subprocess (does NOT propagate to parent shell).
+# The parent shell must source its rc or restart — see final message below.
 export PATH="$INSTALL_DIR:$PATH"
 hash -r 2>/dev/null || rehash 2>/dev/null || true
 
@@ -536,6 +535,23 @@ echo -e "  ${BLU}▶${NC} 命令:     ${GRN}cc${NC} / ${GRN}ccs${NC}"
 echo -e "  ${BLU}▶${NC} 安装目录: ${INSTALL_DIR}"
 echo -e "  ${BLU}▶${NC} 配置目录: ~/.claude/models/"
 echo ""
+
+# Prevent the macOS /usr/bin/cc (clang) from shadowing our launcher.
+# The install script is a child process — its PATH changes don't propagate to
+# the parent shell. Tell the user exactly how to pick up the new PATH.
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo -e "  ${YLW}${BOLD}┌─────────────────────────────────────────────────────┐${NC}"
+    echo -e "  ${YLW}${BOLD}│${NC} ${BOLD}macOS 用户请注意：执行下面命令使 PATH 立即生效${NC}  ${YLW}${BOLD}│${NC}"
+    echo -e "  ${YLW}${BOLD}│${NC}                                                 ${YLW}${BOLD}│${NC}"
+    echo -e "  ${YLW}${BOLD}│${NC}   ${GRN}source ${SHELL_RC} && rehash${NC}                          ${YLW}${BOLD}│${NC}"
+    echo -e "  ${YLW}${BOLD}│${NC}                                                 ${YLW}${BOLD}│${NC}"
+    echo -e "  ${YLW}${BOLD}│${NC} ${DIM}或直接新开一个终端窗口${NC}                           ${YLW}${BOLD}│${NC}"
+    echo -e "  ${YLW}${BOLD}└─────────────────────────────────────────────────────┘${NC}"
+    echo ""
+else
+    echo -e "  ${DIM}执行 source ${SHELL_RC} 或新开终端即可开始使用${NC}"
+    echo ""
+fi
 
 echo -e "  ${BOLD}快速开始${NC}"
 echo -e "  ${DIM}────────────────────────────${NC}"
