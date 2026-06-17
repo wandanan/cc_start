@@ -14,6 +14,15 @@ echo ""
 echo -e "${BOLD}CC Start 卸载程序${NC}"
 echo ""
 
+# ── portable sed -i (macOS BSD sed requires backup extension) ──
+sed_i() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        sed -i '' "$@"
+    else
+        sed -i "$@"
+    fi
+}
+
 # ── 查找安装目录 ──────────────────────────────────────────────
 FOUND_DIRS=()
 for d in "$HOME/.local/bin" "/usr/local/bin"; do
@@ -110,13 +119,13 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
     if [[ -f "$rc" ]]; then
         for d in "${TARGETS[@]}"; do
             # Remove exact export PATH=$d:... lines
-            sed -i "\|export PATH=\"$d:\$PATH\"|d" "$rc" 2>/dev/null || true
-            sed -i "\|export PATH=$d:\$PATH|d" "$rc" 2>/dev/null || true
-            sed -i "\|export PATH=\"$d:\\\$PATH\"|d" "$rc" 2>/dev/null || true
+            sed_i "\|export PATH=\"$d:\$PATH\"|d" "$rc" 2>/dev/null || true
+            sed_i "\|export PATH=$d:\$PATH|d" "$rc" 2>/dev/null || true
+            sed_i "\|export PATH=\"$d:\\\$PATH\"|d" "$rc" 2>/dev/null || true
         done
         # Remove the CC Start comment lines
-        sed -i '/^# CC Start$/d' "$rc" 2>/dev/null || true
-        sed -i '/^# WSL proxy (CC Start)$/d' "$rc" 2>/dev/null || true
+        sed_i '/^# CC Start$/d' "$rc" 2>/dev/null || true
+        sed_i '/^# WSL proxy (CC Start)$/d' "$rc" 2>/dev/null || true
     fi
 done
 
@@ -128,8 +137,8 @@ if [[ -f "$HOME/.wsl-proxy.sh" ]]; then
         # Also remove sourcing line from shell rc
         for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
             if [[ -f "$rc" ]]; then
-                sed -i '\|\. "$HOME/.wsl-proxy.sh"|d' "$rc" 2>/dev/null || true
-                sed -i '\|\. "\$HOME/.wsl-proxy.sh"|d' "$rc" 2>/dev/null || true
+                sed_i '\|\. "$HOME/.wsl-proxy.sh"|d' "$rc" 2>/dev/null || true
+                sed_i '\|\. "\$HOME/.wsl-proxy.sh"|d' "$rc" 2>/dev/null || true
             fi
         done
         echo -e "  ${GRN}✓${NC} WSL 代理配置已移除"

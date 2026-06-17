@@ -65,6 +65,15 @@ step_info() {
     echo -e "  ${BLU}→${NC} $1"
 }
 
+# ── portable sed -i (macOS BSD sed requires backup extension) ──
+sed_i() {
+    if [[ "$(uname -s)" == "Darwin" ]]; then
+        sed -i '' "$@"
+    else
+        sed -i "$@"
+    fi
+}
+
 
 # ── 起始 ──────────────────────────────────────────────────────
 
@@ -82,7 +91,7 @@ step_begin "环境检测" "检查 Node.js & Claude Code 运行环境..."
 # Check Node.js
 NODE_MAJOR=0
 if command -v node >/dev/null 2>&1; then
-    NODE_MAJOR=$(node -v 2>/dev/null | sed 's/v//;s/\..*//')
+    NODE_MAJOR=$(node -v 2>/dev/null | sed -e 's/v//' -e 's/\..*//')
 fi
 
 needs_install=0
@@ -378,9 +387,14 @@ else
 export PATH="$HOME/.local/bin:$PATH"
 PATHINIT
         step_ok "PATH 已写入 ${SHELL_RC}"
-        step_info "执行 source ${SHELL_RC} 或新开终端即可生效"
+        step_info "新开终端或执行 source ${SHELL_RC} 即可生效"
     fi
 fi
+
+# Always prepend to PATH in current session and clear command hash.
+# On macOS, /usr/bin/cc (clang) would otherwise shadow our cc launcher.
+export PATH="$INSTALL_DIR:$PATH"
+hash -r 2>/dev/null || rehash 2>/dev/null || true
 
 # ═══════════════════════════════════════════════════════════════
 # Step 8: WSL 网络代理
@@ -438,8 +452,8 @@ if [[ -f /proc/version ]] && grep -qi "microsoft\|wsl" /proc/version 2>/dev/null
             # Remove old localhost-based proxy config from shell rc
             for rc in "$HOME/.bashrc" "$HOME/.profile"; do
                 if [[ -f "$rc" ]]; then
-                    sed -i '/^[[:space:]]*export .*[Pp][Rr][Oo][Xx][Yy].*localhost/d' "$rc" 2>/dev/null || true
-                    sed -i '/^[[:space:]]*export .*[Pp][Rr][Oo][Xx][Yy].*127\.0\.0\.1/d' "$rc" 2>/dev/null || true
+                    sed_i '/^[[:space:]]*export .*[Pp][Rr][Oo][Xx][Yy].*localhost/d' "$rc" 2>/dev/null || true
+                    sed_i '/^[[:space:]]*export .*[Pp][Rr][Oo][Xx][Yy].*127\.0\.0\.1/d' "$rc" 2>/dev/null || true
                 fi
             done
 
