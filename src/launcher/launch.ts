@@ -7,6 +7,7 @@ import { findClaudeBin } from "../platform/find-claude";
 import { createMergedSettings } from "./merge-settings";
 import { buildClaudeEnv } from "./env";
 import { arrowSelect } from "../ui/arrow-select";
+import { closePrompt } from "../ui/prompts";
 import { BLU, GRN, BOLD, DIM, NC } from "../ui/colors";
 
 function needsWindowsCommandShell(command: string): boolean {
@@ -75,6 +76,22 @@ export async function launchClaude(
   console.log(`  ${DIM}  二进制: ${claudeBinStr}${NC}`);
   console.log(`  ${DIM}  配置已写入: ${fs.existsSync(mergedSettings)}${NC}`);
   console.log("");
+
+  // Clean up all terminal state before handing control to Claude Code.
+  // The persistent readline interface (prompts.ts) and arrow-key selector
+  // (arrow-select.ts) both manipulate stdin — lingering listeners or raw
+  // mode cause the TTY to be in an inconsistent state when spawnSync
+  // inherits it. This manifests as garbled ANSI sequences and input echo
+  // corruption, especially on Windows conpty.
+  closePrompt();
+  if (process.stdin.isTTY) {
+    try {
+      if (process.stdin.isRaw) process.stdin.setRawMode(false);
+    } catch {
+      // setRawMode may throw if the fd is already closed/mangled
+    }
+    if (process.stdin.isPaused()) process.stdin.resume();
+  }
 
   // Launch Claude Code
   const proc = spawnSync(claudeCmd[0], [...claudeCmd.slice(1), ...claudeArgs], {
