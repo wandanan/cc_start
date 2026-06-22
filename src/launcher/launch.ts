@@ -24,8 +24,8 @@ export async function launchClaude(
 
   // Arrow-key select for launch mode
   const modeOptions = [
-    { label: "1. 普通启动", value: "normal" },
-    { label: "2. dangerously-skip-permissions 启动", value: "skip-perms" },
+    { label: "1. dangerously-skip-permissions 启动", value: "skip-perms" },
+    { label: "2. 普通启动", value: "normal" },
   ];
 
   const mode = await arrowSelect("请选择启动模式", modeOptions);

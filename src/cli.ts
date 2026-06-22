@@ -8,6 +8,7 @@ import { pause } from "./ui/prompts";
 import { RED, BOLD, DIM, NC } from "./ui/colors";
 import { getCmdName } from "./platform/detect";
 import { launchClaude } from "./launcher/launch";
+import { recordUsage } from "./config/usage";
 import { listCommand } from "./commands/list";
 import { doctorCommand } from "./commands/doctor";
 import { addCommand } from "./commands/add";
@@ -57,6 +58,8 @@ async function main(argv: string[]): Promise<number> {
         case "help":
           showHelp();
           await pause();
+          break;
+        case "back":
           break;
         case "launch":
           return await launchClaude(action.model, []);
@@ -108,6 +111,7 @@ async function main(argv: string[]): Promise<number> {
         const { models } = loadModels(modelsDir);
         const model = models.find((m) => m.alias === command);
         if (model) {
+          recordUsage(model.alias);
           return await launchClaude(model, args);
         }
       }

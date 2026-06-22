@@ -52,12 +52,6 @@ chmod +x install.sh && ./install.sh
 ✅ Windows 自动配置 PATH，无需手动操作
 ```
 
-> **macOS 用户注意**：系统自带 bash 版本为 3.2，不支持关联数组。请先通过 Homebrew 安装新版 bash：
-> ```bash
-> brew install bash
-> ```
-> Linux 用户无需此步骤，系统自带 bash 4.0+ 已满足要求。
-
 > **安装后提示命令找不到？** Windows 安装程序会自动添加 PATH，但如果失效请手动添加：
 > `系统属性 → 环境变量 → 编辑用户 PATH → 新建 → %USERPROFILE%\.local\bin`
 
@@ -90,44 +84,55 @@ $ cc
 
   多模型，一个工具就够了
 
-╔═══════════════════════════════════╗
-║     请选择模型                    ║
-╚═══════════════════════════════════╝
+  模型: █ [23]
 
-  1)  dsp4-flash     deepseek-v4-flash[1m]
-  2)  dsp4-pro       deepseek-v4-pro[1m]
-  3)  gpt-5.5        gpt-5.5
-  4)  mimo-w         mimo-v2.5-pro
-  5)  qewn3.6        qwen3.6-plus
+  [Claude]
+      1 ag-o45t        claude-opus-4-5-thinking
+  ▶   2 ag-o46         claude-opus-4-6-thinking
+      3 ag-s45         claude-sonnet-4-5
+  [DeepSeek]
+      1 dsp4-flash      deepseek-v4-flash[1m]
+      2 dsp4-pro        deepseek-v4-pro[1m]
+  [Gemini]
+      1 ag-g31ph        gemini-3.1-pro-high
 
-  q)  退出        e)  编辑模型配置
-  a)  添加新模型  r)  删除模型
-  h)  查看帮助
+  1-12 / 32
 
-  请输入编号或名称 (q=退出 a=添加 e=编辑 r=删除 h=帮助): 4
+  Esc 返回菜单  ↑↓ 选择  输入筛选  回车确认
 ```
 
 ## 命令详解
 
 | 命令 | 说明 |
 |---|---|
-| `cc` | 交互式选择模型启动（编号/名称直接启动） |
+| `cc` | 交互式 fzf 风格搜索 + 选择模型启动（支持搜索过滤、上下键选择、Tab 切换分组、数字键快速跳转） |
 | `cc <模型名>` | 跳过菜单，直接启动指定模型 |
-| `cc add` | 添加新模型配置（五步走：名称 → 模型 ID → Key → URL → 子代理） |
-| `cc edit [模型名]` | 编辑已有模型配置（支持修改启动命令名称） |
+| `cc add` | 添加新模型配置 |
+| `cc edit [模型名]` | 编辑已有模型配置 |
 | `cc remove [模型名]` | 删除模型配置 |
 | `cc ls` | 列出所有已配置模型 |
 | `cc sync [模型名]` | 同步当前 MCP/插件配置到指定模型 |
 | `cc reset` | 清空所有模型配置 |
 | `cc -h` | 查看帮助 |
 
-> 在交互菜单中可直接输入 `e` 编辑模型、`r` 删除模型、`a` 添加新模型，无需记忆子命令。
+### 交互菜单快捷键
+
+| 快捷键 | 功能 |
+|---|---|
+| `输入文字` | 实时搜索过滤模型（匹配别名 + 模型 ID） |
+| `↑ ↓` | 上下选择模型 |
+| `Tab` / `Shift+Tab` | 快速切换厂商分组（Claude → DeepSeek → Gemini → ...） |
+| `1-9` | 筛选为空时，按数字直达当前分组第 N 个模型 |
+| `Esc` | 第一次清空筛选，第二次打开操作菜单 |
+| `b` / `空回车` | 操作菜单中返回模型选择 |
 
 > 💡 `cc` 和 `ccs` 完全等价。Linux 系统默认有 `/usr/bin/cc`（C 编译器），若需区分使用 `ccs` 即可。
 
 ## 支持的模型
 
-预置 4 个国产大模型配置模板，填入 API Key 即刻启动：
+预置国产大模型 + Anti-API 内部模型，填入 API Key 即刻启动：
+
+### 国产大模型
 
 | | 命令 | 模型 | 提供商 |
 |---|---|---|---|
@@ -135,15 +140,27 @@ $ cc
 | 🟢 | `cc qwen` | 千问 3.5 Plus | Alibaba |
 | 🟣 | `cc glm` | GLM 5 | Zhipu |
 | 🟠 | `cc mini` | MiniMax M2.5 | MiniMax |
-| ⚪ | `cc <自定义>` | 任意模型 | 任意兼容 Claude API 的服务 |
+
+### Anti-API（Antigravity 代理）
+
+本地启动 [Anti-API](https://github.com/wandanan/anti-api) 后一键切换 Claude / Gemini 模型：
+
+| | 命令 | 模型 ID | 说明 |
+|---|---|---|---|
+| 🟡 | `cc ag-o46` | `claude-opus-4-6-thinking` | Opus 4.6 最强 |
+| 🟡 | `cc ag-s46` | `claude-sonnet-4-6` | Sonnet 4.6 均衡 |
+| 🟡 | `cc ag-s45` | `claude-sonnet-4-5` | Sonnet 4.5 |
+| 🟡 | `cc ag-g35` | `gemini-3.5-flash` | Flash 快速 |
+
+Anti-API 可用模型详见 [MODELS.md](https://github.com/wandanan/anti-api/blob/main/MODELS.md)。
 
 ```bash
 # 打开 4 个终端，各跑各的
 
-终端 1 > cc kimi     # Kimi K2.5
-终端 2 > cc qwen     # 千问 3.5 Plus
-终端 3 > cc glm      # GLM 5
-终端 4 > cc mini     # MiniMax M2.5
+终端 1 > cc ag-o46    # Claude Opus 4.6 Thinking
+终端 2 > cc ag-s46    # Claude Sonnet 4.6
+终端 3 > cc ag-g35    # Gemini 3.5 Flash
+终端 4 > cc qwen      # 千问 3.5 Plus
 ```
 
 > 🔒 每个窗口独立配置，互不干扰，互不打架。
@@ -169,10 +186,38 @@ cc add
   "env": {
     "ANTHROPIC_AUTH_TOKEN": "your-api-key",
     "ANTHROPIC_BASE_URL": "https://api.example.com/anthropic",
-    "ANTHROPIC_MODEL": "model-name"
-  }
+    "ANTHROPIC_MODEL": "model-name",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "subagent-model",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "subagent-model",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "subagent-model",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "subagent-model"
+  },
+  "model": "sonnet",
+  "skipDangerousModePermissionPrompt": true,
+  "skipWebFetchPreflight": true
 }
 ```
+
+### Anti-API 配置示例
+
+```json
+{
+  "env": {
+    "ANTHROPIC_BASE_URL": "http://localhost:8964",
+    "ANTHROPIC_AUTH_TOKEN": "any-value",
+    "ANTHROPIC_MODEL": "claude-sonnet-4-6",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-sonnet-4-6",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6-thinking",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-6"
+  },
+  "model": "sonnet",
+  "skipDangerousModePermissionPrompt": true,
+  "skipWebFetchPreflight": true
+}
+```
+
+> Token 填任意非空值即可，Anti-API 不校验。`ANTHROPIC_BASE_URL` 指向 `http://localhost:8964`。
 
 ## 工作原理
 
@@ -188,11 +233,8 @@ claude --settings ~/.claude/models/qwen.json
 ## 依赖
 
 - [Git](https://git-scm.com/downloads) — Windows 用户需要安装 Git（含 Git Bash）；Mac/Linux 通常已预装
+- [Node.js](https://nodejs.org/) 18+ — 安装脚本会自动检测并在缺失时安装
 - [Claude Code](https://claude.ai/code) — 安装脚本会自动检测并在缺失时通过 npm 安装
-- Bash 4.0+
-  - macOS：系统自带 bash 3.2，需 `brew install bash`
-  - Linux：主流发行版自带 bash 4.x/5.x，无需额外安装
-  - Windows：安装 Git 时自带 Git Bash，无需额外操作
 
 ## License
 
