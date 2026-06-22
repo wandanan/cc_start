@@ -2,8 +2,23 @@ import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { getPlatform } from "../platform/detect";
+import { findClaudeBin } from "../platform/find-claude";
 import { BLU, GRN, YLW, RED, BOLD, DIM, NC } from "../ui/colors";
 import { question } from "../ui/prompts";
+
+function getClaudeVersion(claudeBin: string): string {
+  // npx-based fallback paths — skip version check
+  if (claudeBin.includes("npx ")) return "";
+  try {
+    // Use the resolved path directly so PATH is not involved
+    return execSync(`"${claudeBin}" --version 2>/dev/null || true`, {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
 
 export async function updateCommand(): Promise<number> {
   console.log("");
@@ -12,19 +27,12 @@ export async function updateCommand(): Promise<number> {
   console.log(`${BLU}╚═══════════════════════════════════╝${NC}`);
   console.log("");
 
-  // Check current version
-  let curVer = "";
-  try {
-    curVer = execSync("claude --version 2>/dev/null || true", {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
-  } catch {
-    // ignore
-  }
+  // Use multi-platform binary detection, not bare PATH lookup
+  const claudeBin = findClaudeBin();
+  const curVer = getClaudeVersion(claudeBin);
 
   if (curVer) {
-    console.log(`  当前版本: ${curVer}`);
+    console.log(`  ${DIM}当前版本:${NC} ${curVer}`);
   } else {
     console.log(`  ${YLW}⚠ 未检测到已安装的 Claude Code${NC}`);
   }
@@ -172,15 +180,7 @@ export async function updateCommand(): Promise<number> {
     return 0;
   }
 
-  let newVer = "";
-  try {
-    newVer = execSync("claude --version 2>/dev/null || true", {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
-  } catch {
-    // ignore
-  }
+  const newVer = getClaudeVersion(claudeBin);
 
   if (newVer) {
     console.log("");
