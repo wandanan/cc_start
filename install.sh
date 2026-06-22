@@ -3,6 +3,7 @@
 # CC Start Installer (Mac/Linux)
 
 set -e
+set -o pipefail
 
 NPM_REGISTRY="https://registry.npmmirror.com"
 
