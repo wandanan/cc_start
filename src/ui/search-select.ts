@@ -1,5 +1,6 @@
 import * as readline from "node:readline";
 import { BLU, GRN, DIM, BOLD, NC } from "./colors";
+import { closePrompt } from "./prompts";
 
 export interface SearchOption {
   label: string;
@@ -41,6 +42,11 @@ export function searchSelect(
     let filtered = [...options];
     let displayScroll = 0; // scroll offset in display-line space
     let drawnLines = 0;
+
+    // Kill any lingering readline interface and stale keypress listeners
+    closePrompt();
+    process.stdin.removeAllListeners("keypress");
+    if (process.stdin.isPaused()) process.stdin.resume();
 
     const wasRaw = process.stdin.isRaw;
     process.stdin.setRawMode(true);
