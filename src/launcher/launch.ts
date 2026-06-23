@@ -79,10 +79,18 @@ export async function launchClaude(
 
   // Clean up all terminal state before handing control to Claude Code.
   // The readline interface (prompts.ts) and raw-mode selectors
-  // (arrow-select.ts / search-select.ts via openRawInput) all attach
-  // listeners to stdin and toggle raw mode. Lingering listeners or raw mode
-  // leave the TTY inconsistent for the inherited spawnSync stdio, which
-  // shows up as garbled ANSI and input echo corruption on Windows conpty.
+  // (arrow-select.ts / search-select.ts via openRawInput) attach listeners
+  // to stdin and toggle raw mode. Two things must happen here, in order,
+  // or the inherited spawnSync stdio lands in a bad state (especially on
+  // Windows conpty — manifests as Claude Code hanging on input):
+  //   1. exit raw mode and strip every listener we installed
+  //   2. PAUSE stdin so the parent's ReadStream stops reading fd 0
+  // pause() is the key fix: openRawInput resumes stdin into flowing mode.
+  // A flowing ReadStream keeps uv_read_start on fd 0 and races the child
+  // for input — conpty then routes keystrokes to the parent instead of
+  // Claude Code. Pausing releases the fd to the child. (This is the
+  // opposite of inter-component cleanup, which must NOT pause so the next
+  // selector can read — here we never read stdin in the parent again.)
   closePrompt();
   if (process.stdin.isTTY) {
     try {
@@ -92,7 +100,7 @@ export async function launchClaude(
     }
     process.stdin.removeAllListeners("data");
     process.stdin.removeAllListeners("keypress");
-    if (process.stdin.isPaused()) process.stdin.resume();
+    if (!process.stdin.isPaused()) process.stdin.pause();
   }
 
   // Launch Claude Code
