@@ -1,4 +1,4 @@
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { ModelRecord } from "../config/model-config";
@@ -81,16 +81,17 @@ export async function launchClaude(
   // The readline interface (prompts.ts) and raw-mode selectors
   // (arrow-select.ts / search-select.ts via openRawInput) attach listeners
   // to stdin and toggle raw mode. Two things must happen here, in order,
-  // or the inherited spawnSync stdio lands in a bad state (especially on
-  // Windows conpty — manifests as Claude Code hanging on input):
+  // or the inherited stdio lands in a bad state (especially on Windows
+  // conpty — manifests as Claude Code hanging on input):
   //   1. exit raw mode and strip every listener we installed
   //   2. PAUSE stdin so the parent's ReadStream stops reading fd 0
-  // pause() is the key fix: openRawInput resumes stdin into flowing mode.
-  // A flowing ReadStream keeps uv_read_start on fd 0 and races the child
-  // for input — conpty then routes keystrokes to the parent instead of
-  // Claude Code. Pausing releases the fd to the child. (This is the
-  // opposite of inter-component cleanup, which must NOT pause so the next
-  // selector can read — here we never read stdin in the parent again.)
+  // pause() only takes effect under async spawn: a paused ReadStream calls
+  // uv_read_stop, so the parent no longer competes with the child for fd 0.
+  // Under spawnSync this was inert (the loop is blocked anyway) — which is
+  // why the earlier pause fix did nothing. Switching to async spawn makes
+  // the pause actually hand fd 0 over to Claude Code.
+  // (Opposite of inter-component cleanup, which must NOT pause so the next
+  // selector can read — here the parent never reads stdin again.)
   closePrompt();
   if (process.stdin.isTTY) {
     try {
@@ -103,24 +104,51 @@ export async function launchClaude(
     if (!process.stdin.isPaused()) process.stdin.pause();
   }
 
-  // Launch Claude Code
-  const proc = spawnSync(claudeCmd[0], [...claudeCmd.slice(1), ...claudeArgs], {
-    env,
-    stdio: "inherit",
-    shell: needsWindowsCommandShell(claudeCmd[0]),
+  // Launch Claude Code via async spawn — spawnSync blocks the event loop
+  // and mishandles TTY handoff for full-screen TUIs under Windows conpty,
+  // leaving the child unable to receive input (VSCode hangs forever; cmd
+  // recovers only after a delay). spawn + stdio: "inherit" lets the child
+  // truly own the terminal.
+  const child = spawn(
+    claudeCmd[0],
+    [...claudeCmd.slice(1), ...claudeArgs],
+    { env, stdio: "inherit", shell: needsWindowsCommandShell(claudeCmd[0]) }
+  );
+
+  return new Promise<number>((resolve) => {
+    child.on("error", (err) => {
+      console.error(`启动失败: ${err.message}`);
+      try {
+        fs.unlinkSync(mergedSettings);
+      } catch {
+        // ignore
+      }
+      resolve(1);
+    });
+
+    child.on("exit", (code, signal) => {
+      // Clean up temp settings file
+      try {
+        fs.unlinkSync(mergedSettings);
+      } catch {
+        // ignore cleanup errors
+      }
+      const status =
+        signal != null ? 128 + (signalNumber(signal) ?? 0) : (code ?? 0);
+      // Force exit: the paused TTY ReadStream keeps the event loop alive,
+      // so a normal return would hang. We are the terminal action.
+      process.exit(status);
+    });
   });
+}
 
-  // Clean up temp file
-  try {
-    fs.unlinkSync(mergedSettings);
-  } catch {
-    // ignore cleanup errors
+function signalNumber(signal: string | null): number | undefined {
+  switch (signal) {
+    case "SIGHUP": return 1;
+    case "SIGINT": return 2;
+    case "SIGQUIT": return 3;
+    case "SIGKILL": return 9;
+    case "SIGTERM": return 15;
+    default: return undefined;
   }
-
-  if (proc.error) {
-    console.error(`启动失败: ${proc.error.message}`);
-    return 1;
-  }
-
-  return proc.status ?? 0;
 }
