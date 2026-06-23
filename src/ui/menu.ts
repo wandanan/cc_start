@@ -77,7 +77,10 @@ function actionPrompt(): Promise<MenuAction> {
 
     const wasRaw = process.stdin.isRaw;
     process.stdin.setRawMode(true);
-    readline.emitKeypressEvents(process.stdin);
+    if (!(process.stdin as unknown as Record<string, unknown>)["__cc_keypress"]) {
+      readline.emitKeypressEvents(process.stdin);
+      (process.stdin as unknown as Record<string, unknown>)["__cc_keypress"] = true;
+    }
 
     function cleanup(): void {
       process.stdin.setRawMode(wasRaw ?? false);
