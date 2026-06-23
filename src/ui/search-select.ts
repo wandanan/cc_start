@@ -181,7 +181,7 @@ export function searchSelect(
       process.stdout.write("\x1b[?25h");
       process.stdin.setRawMode(wasRaw ?? false);
       process.stdin.removeListener("keypress", onKeypress);
-      process.stdin.pause();
+      // Don't pause — keep stdin flowing so next component can resume
     }
 
     function moveSelection(delta: 1 | -1): void {

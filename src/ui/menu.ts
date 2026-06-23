@@ -85,7 +85,6 @@ function actionPrompt(): Promise<MenuAction> {
     function cleanup(): void {
       process.stdin.setRawMode(wasRaw ?? false);
       process.stdin.removeListener("keypress", handler);
-      process.stdin.pause();
     }
 
     function handler(

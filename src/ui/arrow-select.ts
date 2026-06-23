@@ -51,7 +51,6 @@ export function arrowSelect(
       process.stdout.write("\x1b[?25h"); // show cursor
       process.stdin.setRawMode(wasRaw ?? false);
       process.stdin.removeListener("keypress", onKeypress);
-      process.stdin.pause();
     }
 
     function onKeypress(
