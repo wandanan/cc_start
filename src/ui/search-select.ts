@@ -1,6 +1,5 @@
-import * as readline from "node:readline";
 import { BLU, GRN, DIM, BOLD, NC } from "./colors";
-import { closePrompt } from "./prompts";
+import { openRawInput, RawKey } from "./raw-input";
 
 export interface SearchOption {
   label: string;
@@ -43,17 +42,8 @@ export function searchSelect(
     let displayScroll = 0; // scroll offset in display-line space
     let drawnLines = 0;
 
-    // Kill any lingering readline interface and stale keypress listeners
-    closePrompt();
-    process.stdin.removeAllListeners("keypress");
-    if (process.stdin.isPaused()) process.stdin.resume();
-
-    const wasRaw = process.stdin.isRaw;
-    process.stdin.setRawMode(true);
-    if (!(process.stdin as unknown as Record<string, unknown>)["__cc_keypress"]) {
-      readline.emitKeypressEvents(process.stdin);
-      (process.stdin as unknown as Record<string, unknown>)["__cc_keypress"] = true;
-    }
+    // Take exclusive raw control of stdin (cleans up any readline/keypress state)
+    const input = openRawInput();
 
     function applyFilter(): void {
       const lower = filterText.toLowerCase();
@@ -185,9 +175,7 @@ export function searchSelect(
 
     function cleanup(): void {
       process.stdout.write("\x1b[?25h");
-      process.stdin.setRawMode(wasRaw ?? false);
-      process.stdin.removeListener("keypress", onKeypress);
-      // Don't pause — keep stdin flowing so next component can resume
+      input.close();
     }
 
     function moveSelection(delta: 1 | -1): void {
@@ -246,12 +234,7 @@ export function searchSelect(
       render();
     }
 
-    function onKeypress(
-      str: string | undefined,
-      key: readline.Key | undefined
-    ): void {
-      if (!key) return;
-
+    function onKey(key: RawKey): void {
       if (key.ctrl && key.name === "c") {
         cleanup();
         process.stdout.write("\n");
@@ -272,7 +255,7 @@ export function searchSelect(
         return;
       }
 
-      if (key.name === "return" || key.name === "enter") {
+      if (key.name === "return") {
         cleanup();
         process.stdout.write("\n");
         if (filtered.length > 0 && selectedIdx < filtered.length) {
@@ -301,8 +284,13 @@ export function searchSelect(
       }
 
       // Number key: jump to Nth item within current group (only when filter is empty)
-      if (!filterText && str && str.length === 1 && str >= "1" && str <= "9") {
-        const targetNum = parseInt(str, 10);
+      if (
+        !filterText &&
+        key.char.length === 1 &&
+        key.char >= "1" &&
+        key.char <= "9"
+      ) {
+        const targetNum = parseInt(key.char, 10);
         const currentGroup = filtered[selectedIdx]?.group || "";
         const groupItems: number[] = [];
         for (let i = 0; i < filtered.length; i++) {
@@ -329,8 +317,8 @@ export function searchSelect(
         return;
       }
 
-      if (str && str.length === 1 && str.charCodeAt(0) >= 32) {
-        filterText += str;
+      if (key.char) {
+        filterText += key.char;
         applyFilter();
         render();
       }
@@ -339,7 +327,6 @@ export function searchSelect(
     process.stdout.write("\x1b[?25l");
     applyFilter();
     render();
-    process.stdin.on("keypress", onKeypress);
-    process.stdin.resume();
+    input.onKey(onKey);
   });
 }

@@ -78,11 +78,11 @@ export async function launchClaude(
   console.log("");
 
   // Clean up all terminal state before handing control to Claude Code.
-  // The persistent readline interface (prompts.ts) and arrow-key selector
-  // (arrow-select.ts) both manipulate stdin — lingering listeners or raw
-  // mode cause the TTY to be in an inconsistent state when spawnSync
-  // inherits it. This manifests as garbled ANSI sequences and input echo
-  // corruption, especially on Windows conpty.
+  // The readline interface (prompts.ts) and raw-mode selectors
+  // (arrow-select.ts / search-select.ts via openRawInput) all attach
+  // listeners to stdin and toggle raw mode. Lingering listeners or raw mode
+  // leave the TTY inconsistent for the inherited spawnSync stdio, which
+  // shows up as garbled ANSI and input echo corruption on Windows conpty.
   closePrompt();
   if (process.stdin.isTTY) {
     try {
@@ -90,6 +90,8 @@ export async function launchClaude(
     } catch {
       // setRawMode may throw if the fd is already closed/mangled
     }
+    process.stdin.removeAllListeners("data");
+    process.stdin.removeAllListeners("keypress");
     if (process.stdin.isPaused()) process.stdin.resume();
   }
 

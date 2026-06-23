@@ -1,10 +1,10 @@
-import * as readline from "node:readline";
 import { getModelsDir } from "../config/paths";
 import { loadModels, ModelRecord } from "../config/model-config";
 import { loadUsage, recordUsage } from "../config/usage";
 import { showBanner } from "./banner";
 import { question } from "./prompts";
 import { searchSelect, SearchOption } from "./search-select";
+import { openRawInput, RawKey } from "./raw-input";
 import { GRN, YLW, RED, DIM, NC } from "../ui/colors";
 import { getCmdName } from "../platform/detect";
 
@@ -75,24 +75,13 @@ function actionPrompt(): Promise<MenuAction> {
     console.log("");
     console.log(`  ${DIM}按 Esc 或 b 返回模型选择${NC}`);
 
-    const wasRaw = process.stdin.isRaw;
-    process.stdin.setRawMode(true);
-    if (!(process.stdin as unknown as Record<string, unknown>)["__cc_keypress"]) {
-      readline.emitKeypressEvents(process.stdin);
-      (process.stdin as unknown as Record<string, unknown>)["__cc_keypress"] = true;
-    }
+    const input = openRawInput();
 
     function cleanup(): void {
-      process.stdin.setRawMode(wasRaw ?? false);
-      process.stdin.removeListener("keypress", handler);
+      input.close();
     }
 
-    function handler(
-      str: string | undefined,
-      key: readline.Key | undefined
-    ): void {
-      if (!key) return;
-
+    function onKey(key: RawKey): void {
       if (key.ctrl && key.name === "c") {
         cleanup();
         resolve({ type: "quit" });
@@ -105,13 +94,13 @@ function actionPrompt(): Promise<MenuAction> {
         return;
       }
 
-      if (key.name === "return" || key.name === "enter") {
+      if (key.name === "return") {
         cleanup();
         resolve({ type: "back" });
         return;
       }
 
-      const ch = (str || "").toLowerCase();
+      const ch = key.char.toLowerCase();
       if (ch === "q") { cleanup(); resolve({ type: "quit" }); return; }
       if (ch === "a") { cleanup(); resolve({ type: "add" }); return; }
       if (ch === "e") { cleanup(); resolve({ type: "edit" }); return; }
@@ -121,8 +110,7 @@ function actionPrompt(): Promise<MenuAction> {
       if (ch === "b") { cleanup(); resolve({ type: "back" }); return; }
     }
 
-    process.stdin.on("keypress", handler);
-    process.stdin.resume();
+    input.onKey(onKey);
   });
 }
 

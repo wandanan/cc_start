@@ -1,5 +1,5 @@
-import * as readline from "node:readline";
 import { GRN, NC } from "./colors";
+import { openRawInput, RawKey } from "./raw-input";
 
 export interface ArrowOption {
   label: string;
@@ -30,13 +30,6 @@ export function arrowSelect(
     console.log(`\n\x1b[34m${prompt} (↑↓选择, 回车确认):\x1b[0m`);
     process.stdout.write("\x1b[?25l"); // hide cursor
 
-    const wasRaw = process.stdin.isRaw;
-    process.stdin.setRawMode(true);
-    if (!(process.stdin as unknown as Record<string, unknown>)["__cc_keypress"]) {
-      readline.emitKeypressEvents(process.stdin);
-      (process.stdin as unknown as Record<string, unknown>)["__cc_keypress"] = true;
-    }
-
     function render(): void {
       for (let i = 0; i < count; i++) {
         if (i === selected) {
@@ -47,18 +40,14 @@ export function arrowSelect(
       }
     }
 
+    const input = openRawInput();
+
     function cleanup(): void {
       process.stdout.write("\x1b[?25h"); // show cursor
-      process.stdin.setRawMode(wasRaw ?? false);
-      process.stdin.removeListener("keypress", onKeypress);
+      input.close();
     }
 
-    function onKeypress(
-      _str: string | undefined,
-      key: readline.Key | undefined
-    ): void {
-      if (!key) return;
-
+    function onKey(key: RawKey): void {
       if (key.name === "up") {
         selected = (selected - 1 + count) % count;
         process.stdout.write(`\x1b[${count}A`);
@@ -67,7 +56,7 @@ export function arrowSelect(
         selected = (selected + 1) % count;
         process.stdout.write(`\x1b[${count}A`);
         render();
-      } else if (key.name === "return" || key.name === "enter") {
+      } else if (key.name === "return") {
         cleanup();
         console.log(""); // final newline
         resolve(options[selected]?.value ?? null);
@@ -79,7 +68,6 @@ export function arrowSelect(
     }
 
     render();
-    process.stdin.on("keypress", onKeypress);
-    process.stdin.resume();
+    input.onKey(onKey);
   });
 }
