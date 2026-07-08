@@ -61,7 +61,7 @@ export async function updateCommand(): Promise<number> {
             console.log(`  ${YLW}需要 root 权限，请手动运行:${NC}`);
             console.log("");
             console.log(
-              `    ${BOLD}sudo npm install -g @anthropic-ai/claude-code@2.1.196${NC}`
+              `    ${BOLD}sudo npm install -g @anthropic-ai/claude-code${NC}`
             );
             console.log("");
             await question("  按回车继续...");
@@ -153,7 +153,7 @@ export async function updateCommand(): Promise<number> {
   let upgradeOk = false;
   try {
     execSync(
-      `${npmCmd} install -g --no-audit --no-fund @anthropic-ai/claude-code@2.1.196`,
+      `${npmCmd} install -g --no-audit --no-fund @anthropic-ai/claude-code`,
       { stdio: "inherit" }
     );
     upgradeOk = true;
@@ -176,7 +176,7 @@ export async function updateCommand(): Promise<number> {
     console.log("");
     console.log(`  ${RED}✗ 升级失败${NC}`);
     console.log(
-      `  ${YLW}请手动执行: ${npmCmd} install -g @anthropic-ai/claude-code@2.1.196${NC}`
+      `  ${YLW}请手动执行: ${npmCmd} install -g @anthropic-ai/claude-code${NC}`
     );
     console.log("");
     await question("  按回车继续...");
@@ -192,6 +192,30 @@ export async function updateCommand(): Promise<number> {
     console.log("");
     console.log(`  ${GRN}✓ 升级完成${NC}`);
   }
+
+  // Check for DeepSeek models and warn about compatibility
+  try {
+    const modelsDir = path.join(
+      process.env.USERPROFILE || process.env.HOME || "~",
+      ".claude", "models"
+    );
+    if (fs.existsSync(modelsDir)) {
+      const hasDeepSeek = fs.readdirSync(modelsDir)
+        .filter((f) => f.endsWith(".json") && !f.startsWith("."))
+        .some((f) => {
+          try {
+            const raw = fs.readFileSync(path.join(modelsDir, f), "utf-8");
+            return raw.toLowerCase().includes("deepseek");
+          } catch { return false; }
+        });
+      if (hasDeepSeek) {
+        console.log("");
+        console.log(`  ${YLW}⚠ 检测到 DeepSeek 模型配置${NC}`);
+        console.log(`  ${DIM}新版本可能存在兼容性问题。如遇模型不可用，请回退:${NC}`);
+        console.log(`  ${DIM}npm install -g @anthropic-ai/claude-code@2.1.196${NC}`);
+      }
+    }
+  } catch { /* ignore */ }
 
   console.log("");
   await question("  按回车继续...");

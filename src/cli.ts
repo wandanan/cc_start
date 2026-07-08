@@ -19,6 +19,7 @@ import { upgradeCommand } from "./commands/upgrade";
 import { resetCommand } from "./commands/reset";
 import { updateCommand } from "./commands/update";
 import { forkCommand } from "./commands/fork";
+import { whitelistCommand } from "./commands/whitelist";
 
 function ensureConfigDir(): void {
   const dir = getModelsDir();
@@ -58,6 +59,10 @@ async function main(argv: string[]): Promise<number> {
           break;
         case "fork":
           await forkCommand([]);
+          await pause();
+          break;
+        case "whitelist":
+          await whitelistCommand([]);
           await pause();
           break;
         case "help":
@@ -104,6 +109,9 @@ async function main(argv: string[]): Promise<number> {
       return await resetCommand();
     case "fork":
       return await forkCommand(args);
+    case "whitelist":
+    case "wl":
+      return await whitelistCommand(args);
     case "-h":
     case "--help":
     case "help":

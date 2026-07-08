@@ -1,4 +1,5 @@
 import type { ModelSettings } from "../config/model-config";
+import { isInWhitelist } from "../config/context-whitelist";
 
 const DEEPSEEK_SUPPORTED_CAPABILITIES = "thinking,adaptive_thinking,temperature";
 
@@ -10,7 +11,11 @@ export function ensureOneMillionSuffix(model: string): string {
   if (/\[[0-9]+[kKmM]\]/.test(model)) {
     return model;
   }
-  return `${model}[1m]`;
+  // Only add [1m] suffix if the model is in the 1M context whitelist
+  if (isInWhitelist(model)) {
+    return `${model}[1m]`;
+  }
+  return model;
 }
 
 export function applyDeepSeekPolicy(config: ModelSettings): boolean {
