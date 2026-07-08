@@ -272,6 +272,7 @@ if [[ -f "$SCRIPT_DIR/package.json" ]]; then
         if [[ ! -x "node_modules/.bin/tsc" ]]; then
             step_info "Using npm registry: $NPM_REGISTRY"
             npm_direct npm install --registry="$NPM_REGISTRY"
+            chmod -R +x node_modules/.bin/ 2>/dev/null || true
         fi
         npm run build
     )
