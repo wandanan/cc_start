@@ -252,7 +252,12 @@ if [[ -f "$INSTALL_DIR/cc" ]]; then
 fi
 
 if [[ "$SKIP_SCRIPTS" == "0" ]]; then
-    cp "$SCRIPT_DIR/cc" "$INSTALL_DIR/cc"
+    cp "$SCRIPT_DIR/cc" "$INSTALL_DIR/cc" 2>/dev/null || {
+        step_warn "/usr/local/bin 无写权限，切换到 ~/.local/bin"
+        INSTALL_DIR="$HOME/.local/bin"
+        mkdir -p "$INSTALL_DIR"
+        cp "$SCRIPT_DIR/cc" "$INSTALL_DIR/cc"
+    }
     chmod +x "$INSTALL_DIR/cc"
     ln -sf "$INSTALL_DIR/cc" "$INSTALL_DIR/ccs"
     step_ok "cc  → ${INSTALL_DIR}/cc"
