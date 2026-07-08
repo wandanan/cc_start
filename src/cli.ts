@@ -18,6 +18,7 @@ import { syncCommand } from "./commands/sync";
 import { upgradeCommand } from "./commands/upgrade";
 import { resetCommand } from "./commands/reset";
 import { updateCommand } from "./commands/update";
+import { forkCommand } from "./commands/fork";
 
 function ensureConfigDir(): void {
   const dir = getModelsDir();
@@ -54,6 +55,10 @@ async function main(argv: string[]): Promise<number> {
           break;
         case "update":
           await updateCommand();
+          break;
+        case "fork":
+          await forkCommand([]);
+          await pause();
           break;
         case "help":
           showHelp();
@@ -97,6 +102,8 @@ async function main(argv: string[]): Promise<number> {
       return await updateCommand();
     case "reset":
       return await resetCommand();
+    case "fork":
+      return await forkCommand(args);
     case "-h":
     case "--help":
     case "help":
