@@ -10,8 +10,11 @@ function getClaudeVersion(claudeBin: string): string {
   // npx-based fallback paths — skip version check
   if (claudeBin.includes("npx ")) return "";
   try {
-    // Use the resolved path directly so PATH is not involved
-    return execSync(`"${claudeBin}" --version 2>/dev/null || true`, {
+    // Use the resolved path directly so PATH is not involved.
+    // Note: no `2>/dev/null || true` — those are bash-isms; on win32 execSync
+    // defaults to cmd.exe where they break the command and yield empty output.
+    // The try/catch + piped stdio already swallow failures and stderr.
+    return execSync(`"${claudeBin}" --version`, {
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
@@ -58,7 +61,7 @@ export async function updateCommand(): Promise<number> {
             console.log(`  ${YLW}需要 root 权限，请手动运行:${NC}`);
             console.log("");
             console.log(
-              `    ${BOLD}sudo npm install -g @anthropic-ai/claude-code${NC}`
+              `    ${BOLD}sudo npm install -g @anthropic-ai/claude-code@2.1.196${NC}`
             );
             console.log("");
             await question("  按回车继续...");
@@ -78,7 +81,7 @@ export async function updateCommand(): Promise<number> {
 
   // Clean stale temp dirs
   try {
-    const prefix = execSync("npm config get prefix 2>/dev/null || true", {
+    const prefix = execSync("npm config get prefix", {
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
@@ -150,7 +153,7 @@ export async function updateCommand(): Promise<number> {
   let upgradeOk = false;
   try {
     execSync(
-      `${npmCmd} install -g --no-audit --no-fund @anthropic-ai/claude-code`,
+      `${npmCmd} install -g --no-audit --no-fund @anthropic-ai/claude-code@2.1.196`,
       { stdio: "inherit" }
     );
     upgradeOk = true;
@@ -173,7 +176,7 @@ export async function updateCommand(): Promise<number> {
     console.log("");
     console.log(`  ${RED}✗ 升级失败${NC}`);
     console.log(
-      `  ${YLW}请手动执行: ${npmCmd} install -g @anthropic-ai/claude-code${NC}`
+      `  ${YLW}请手动执行: ${npmCmd} install -g @anthropic-ai/claude-code@2.1.196${NC}`
     );
     console.log("");
     await question("  按回车继续...");

@@ -185,7 +185,7 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
         if sudo -n true 2>/dev/null; then
             npm_cmd="sudo npm"
         else
-            step_fail "需要 root 权限，请手动执行: sudo npm install -g @anthropic-ai/claude-code"
+            step_fail "需要 root 权限，请手动执行: sudo npm install -g @anthropic-ai/claude-code@2.1.196"
             exit 1
         fi
     fi
@@ -202,12 +202,12 @@ if [[ "$CLAUDE_OK" == "0" ]]; then
     install_ok=0
 
     step_info "Using npm registry: $NPM_REGISTRY"
-    if npm_direct $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code --registry="$NPM_REGISTRY"; then
+    if npm_direct $npm_cmd install -g --no-audit --no-fund @anthropic-ai/claude-code@2.1.196 --registry="$NPM_REGISTRY"; then
         CLAUDE_VER=$(claude --version 2>/dev/null) || true
         step_ok "Claude Code 安装成功"
         install_ok=1
     else
-        step_fail "安装失败，请手动执行: $npm_cmd install -g @anthropic-ai/claude-code"
+        step_fail "安装失败，请手动执行: $npm_cmd install -g @anthropic-ai/claude-code@2.1.196"
     fi
 
     if [[ $install_ok -eq 0 ]]; then
