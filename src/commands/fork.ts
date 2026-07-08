@@ -401,8 +401,9 @@ export async function forkCommand(argv: string[]): Promise<number> {
 
   // ── Execute fork ──
   console.log(`\n  ${BLU}⏳ 执行分叉...${NC}`);
+  let newSessionId = "";
   try {
-    executeFork(targetSession, modelAlias);
+    newSessionId = executeFork(targetSession, modelAlias);
     console.log(`  ${GRN}✓ 复制对话文件 (${targetSession.lines} 行)${NC}`);
     console.log(`  ${GRN}✓ 插入 fork-source 溯源记录${NC}`);
     console.log(`  ${GRN}✓ 替换 sessionId${NC}`);
@@ -418,7 +419,7 @@ export async function forkCommand(argv: string[]): Promise<number> {
 
   // ── Launch (unless --no-launch) ──
   if (!noLaunch && modelRecord) {
-    return await launchClaude(modelRecord, []);
+    return await launchClaude(modelRecord, ["--resume", newSessionId]);
   }
 
   resetStdin();
