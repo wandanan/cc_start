@@ -4,7 +4,11 @@
 # Resolve node from nvm if not already in PATH
 if ! command -v node >/dev/null 2>&1; then
     export NVM_DIR="$HOME/.nvm"
-    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" 2>/dev/null
+fi
+if ! command -v node >/dev/null 2>&1; then
+    NODE_BIN=$(find "$HOME/.nvm/versions/node" -name node -type f 2>/dev/null | head -1)
+    [ -n "$NODE_BIN" ] && export PATH="$(dirname "$NODE_BIN"):$PATH"
 fi
 
 # Find cli.js — try install-prefix-relative first, then XDG data home
