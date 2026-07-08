@@ -17,11 +17,16 @@ import { getCmdName } from "../platform/detect";
 function deepSeekDetectAndFix(
   baseUrl: string,
   modelId: string
-): { modelId: string; isDeepSeek: boolean } {
+): { modelId: string; baseUrl: string; isDeepSeek: boolean } {
   if (baseUrl.toLowerCase().includes("deepseek")) {
-    return { modelId: ensureOneMillionSuffix(modelId), isDeepSeek: true };
+    let url = baseUrl;
+    // Auto-append /anthropic for bare api.deepseek.com URLs
+    if (url.match(/api\.deepseek\.com\/?$/)) {
+      url = url.replace(/\/?$/, "/anthropic");
+    }
+    return { modelId: ensureOneMillionSuffix(modelId), baseUrl: url, isDeepSeek: true };
   }
-  return { modelId, isDeepSeek: false };
+  return { modelId, baseUrl, isDeepSeek: false };
 }
 
 export async function addCommand(): Promise<number> {
@@ -82,6 +87,7 @@ export async function addCommand(): Promise<number> {
     // DeepSeek detection
     const dsResult = deepSeekDetectAndFix(baseUrl, modelId);
     modelId = dsResult.modelId;
+    const normalizedUrl = dsResult.baseUrl;
     if (dsResult.isDeepSeek) {
       console.log("");
       console.log(`  ${CYA}🔍 检测到 DeepSeek API，已自动配置 1M 上下文窗口${NC}`);
@@ -115,7 +121,7 @@ export async function addCommand(): Promise<number> {
     console.log(`  命令名称:  ${GRN}${cmdName} ${alias}${NC}`);
     console.log(`  模型 ID:   ${modelId}`);
     console.log(`  API Key:   ${maskApiKey(apiKey)}`);
-    console.log(`  Base URL:  ${baseUrl}`);
+    console.log(`  Base URL:  ${normalizedUrl}`);
     console.log(`  子代理模型: ${subagentModel}`);
     if (subagentModel === modelId) {
       console.log(`  ${DIM}            (与主模型相同)${NC}`);
@@ -153,7 +159,7 @@ export async function addCommand(): Promise<number> {
 
     const env = config.env as Record<string, unknown>;
     env.ANTHROPIC_AUTH_TOKEN = apiKey;
-    env.ANTHROPIC_BASE_URL = baseUrl;
+    env.ANTHROPIC_BASE_URL = normalizedUrl;
     env.ANTHROPIC_MODEL = modelId;
     env.ANTHROPIC_DEFAULT_OPUS_MODEL = modelId;
     env.ANTHROPIC_DEFAULT_SONNET_MODEL = modelId;

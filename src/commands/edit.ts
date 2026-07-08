@@ -79,6 +79,10 @@ export async function editCommand(modelName?: string): Promise<number> {
   // DeepSeek detection for URL change
   if (newUrl.toLowerCase().includes("deepseek")) {
     newModelId = ensureOneMillionSuffix(newModelId);
+    // Auto-append /anthropic for bare api.deepseek.com URLs
+    if (newUrl.match(/api\.deepseek\.com\/?$/)) {
+      newUrl = newUrl.replace(/\/?$/, "/anthropic");
+    }
   }
 
   console.log("");
