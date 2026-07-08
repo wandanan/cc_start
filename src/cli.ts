@@ -59,7 +59,6 @@ async function main(argv: string[]): Promise<number> {
           break;
         case "fork":
           await forkCommand([]);
-          await pause();
           break;
         case "whitelist":
           await whitelistCommand([]);

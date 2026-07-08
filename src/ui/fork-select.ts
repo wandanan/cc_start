@@ -129,6 +129,7 @@ export function forkTreeSelect(flat: FlatItem[]): Promise<SessionResult> {
       } else if (key.name === "q" || (key.ctrl && key.name === "c")) {
         input.close();
         process.stdout.write("\x1b[?25h");
+        process.stdout.write(`\x1b[${count + 2}A\x1b[J`);
         resolve({ sessionId: null, promoted: null });
       }
     }
