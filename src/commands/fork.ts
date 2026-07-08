@@ -256,7 +256,7 @@ function confirmRaw(prompt: string): Promise<boolean> {
         input.close();
         process.stdout.write("\n");
         resolve(false);
-      } else if (key.name === "q" || (key.ctrl && key.name === "c")) {
+      } else if (key.name === "q" || key.name === "escape" || (key.ctrl && key.name === "c")) {
         input.close();
         process.stdout.write("\n");
         resolve(false);

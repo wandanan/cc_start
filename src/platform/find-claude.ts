@@ -96,9 +96,12 @@ function systemWhich(cmd: string): string | null {
   // MSYS/Git Bash: 用 bash which
   if (isMsys()) {
     try {
+      // shell:"bash" 必需 — win32 下 execSync 默认用 cmd.exe，cmd.exe 没有 which，
+      // 且 `2>/dev/null || true` 是 bash 语法，在 cmd.exe 下会破坏命令返回空串。
       const result = execSync(`which "${cmd}" 2>/dev/null || true`, {
         encoding: "utf8",
         stdio: ["pipe", "pipe", "pipe"],
+        shell: "bash",
       }).trim();
       if (result) return result;
     } catch {

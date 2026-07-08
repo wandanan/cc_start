@@ -126,7 +126,7 @@ export function forkTreeSelect(flat: FlatItem[]): Promise<SessionResult> {
           process.stdout.write("\x1b[?25h");
           resolve({ sessionId: null, promoted: current.meta.sessionId });
         }
-      } else if (key.name === "q" || (key.ctrl && key.name === "c")) {
+      } else if (key.name === "q" || key.name === "escape" || (key.ctrl && key.name === "c")) {
         input.close();
         process.stdout.write("\x1b[?25h");
         process.stdout.write(`\x1b[${count + 2}A\x1b[J`);
