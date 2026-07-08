@@ -57,18 +57,6 @@ export function applyDeepSeekPolicy(config: ModelSettings): boolean {
     changed = true;
   }
 
-  if (!config.env.CLAUDE_CODE_USE_FOUNDRY) {
-    config.env.CLAUDE_CODE_USE_FOUNDRY = "1";
-    changed = true;
-  }
-  if (!config.env.ANTHROPIC_FOUNDRY_BASE_URL && config.env.ANTHROPIC_BASE_URL) {
-    config.env.ANTHROPIC_FOUNDRY_BASE_URL = config.env.ANTHROPIC_BASE_URL;
-    changed = true;
-  }
-  if (!config.env.ANTHROPIC_FOUNDRY_API_KEY && config.env.ANTHROPIC_AUTH_TOKEN) {
-    config.env.ANTHROPIC_FOUNDRY_API_KEY = config.env.ANTHROPIC_AUTH_TOKEN;
-    changed = true;
-  }
   for (const key of [
     "ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES",
     "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES",
