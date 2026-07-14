@@ -4,7 +4,7 @@ import path from "node:path";
 import { getPlatform } from "../platform/detect";
 import { findClaudeBin } from "../platform/find-claude";
 import { BLU, GRN, YLW, RED, BOLD, DIM, NC } from "../ui/colors";
-import { question } from "../ui/prompts";
+import { question, confirm, closePrompt } from "../ui/prompts";
 
 function getClaudeVersion(claudeBin: string): string {
   // npx-based fallback paths — skip version check
@@ -17,6 +17,22 @@ function getClaudeVersion(claudeBin: string): string {
     return execSync(`"${claudeBin}" --version`, {
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 查询 npm registry 上的最新发布版本（best-effort，网络失败返回空串）。
+ * 与当前版本比较，已是最新则跳过无意义的 200MB 重装。
+ */
+function getLatestVersion(): string {
+  try {
+    return execSync(`npm view @anthropic-ai/claude-code version`, {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+      timeout: 20000,
     }).trim();
   } catch {
     return "";
@@ -38,6 +54,22 @@ export async function updateCommand(): Promise<number> {
     console.log(`  ${DIM}当前版本:${NC} ${curVer}`);
   } else {
     console.log(`  ${YLW}⚠ 未检测到已安装的 Claude Code${NC}`);
+  }
+
+  // 查询最新版本，已是最新则跳过（避免无意义的 200MB 重装）
+  const latestVer = getLatestVersion();
+  if (latestVer) {
+    console.log(`  ${DIM}最新版本:${NC} ${latestVer}`);
+    if (curVer) {
+      // curVer 形如 "2.1.207 (Claude Code)" - 提取数字版本比较
+      const curNum = curVer.match(/(\d+\.\d+\.\d+)/)?.[1] ?? "";
+      if (curNum === latestVer) {
+        console.log(`  ${GRN}✓ 已是最新版本，无需升级${NC}`);
+        console.log("");
+        await question("  按回车继续...");
+        return 0;
+      }
+    }
   }
 
   // Determine npm command
@@ -78,6 +110,17 @@ export async function updateCommand(): Promise<number> {
     `  ${DIM}通过 npm 升级到最新版本 (约 200MB，下载较慢请耐心等待)...${NC}`
   );
   console.log("");
+
+  // 显式确认：菜单里 'u' 是单键无确认，误触（或 stdin 残留字节）会直接
+  // 触发 200MB 下载。TTY 交互时必须确认；非 TTY（脚本调用 `cc update`）放行。
+  if (process.stdin.isTTY) {
+    const ok = await confirm(`  ${BOLD}确认开始升级？${NC}`, false);
+    closePrompt(); // 释放 stdin，避免 readline 与后续 npm 的 stdio:inherit 冲突
+    if (!ok) {
+      console.log(`  ${DIM}已取消${NC}`);
+      return 0;
+    }
+  }
 
   // Clean stale temp dirs
   try {

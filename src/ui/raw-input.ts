@@ -44,9 +44,14 @@ export function openRawInput(): RawInputHandle {
   process.stdin.resume();
 
   const handlers: Array<(key: RawKey) => void> = [];
+  // 组件 resolve/cleanup 后置位：parseKeys 可能从一个 chunk 解析出多个按键
+  // （如 Esc 紧跟一个普通字符）。一旦本输入上下文关闭，同一 chunk 内剩余
+  // 按键必须丢弃，否则会送到已失效的 handler 产生副作用。
+  let closed = false;
 
   function onData(chunk: Buffer): void {
     for (const key of parseKeys(chunk)) {
+      if (closed) return;
       // Copy in case a handler (un)registers during dispatch.
       for (const h of handlers.slice()) h(key);
     }
@@ -59,6 +64,7 @@ export function openRawInput(): RawInputHandle {
       handlers.push(handler);
     },
     close(): void {
+      closed = true;
       process.stdin.removeListener("data", onData);
       process.stdin.setRawMode(wasRaw ?? false);
       // Intentionally do not pause — keep stdin flowing for the next component.

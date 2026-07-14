@@ -15,6 +15,36 @@ import { BLU, GRN, BOLD, DIM, NC } from "../ui/colors";
  * 是 SEA 单文件 claude.exe，旧版是 cli.js。解析出可直接 spawn 的目标，绕过
  * shell，避免 DEP0190（shell:true + args 数组 → 参数未转义警告）。
  */
+function isValidNativeBinary(p: string): boolean {
+  try {
+    const stat = fs.statSync(p);
+    if (!stat.isFile() || stat.size < 1024 * 1024) return false;
+    const fd = fs.openSync(p, "r");
+    try {
+      const buf = Buffer.alloc(2);
+      fs.readSync(fd, buf, 0, 2, 0);
+      return buf[0] === 0x4d && buf[1] === 0x5a; // "MZ"
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return false;
+  }
+}
+
+function findPlatformBinaries(pkgRoot: string): string[] {
+  const dir = path.join(pkgRoot, "node_modules", "@anthropic-ai");
+  const name = process.platform === "win32" ? "claude.exe" : "claude";
+  try {
+    return fs
+      .readdirSync(dir)
+      .filter((e) => e.startsWith("claude-code-"))
+      .map((e) => path.join(dir, e, name));
+  } catch {
+    return [];
+  }
+}
+
 function resolveShimTarget(
   cmdPath: string
 ): { cmd: string; preArgs: string[] } | null {
@@ -25,8 +55,24 @@ function resolveShimTarget(
     "@anthropic-ai",
     "claude-code"
   );
-  const exe = path.join(pkgRoot, "bin", "claude.exe");
-  if (fs.existsSync(exe)) return { cmd: exe, preArgs: [] };
+
+  // 优先级 1: bin/claude.exe - v2.x postinstall 把平台 SEA 二进制 hardlink/copy
+  // 到此。升级中断(EBUSY 等)会让它退回占位符 stub，故需校验有效性。
+  const binExe = path.join(pkgRoot, "bin", "claude.exe");
+  if (isValidNativeBinary(binExe)) return { cmd: binExe, preArgs: [] };
+
+  // 优先级 2: 平台包真二进制 - optionalDependencies 直接装，独立于 postinstall，
+  // bin/claude.exe 损坏时它通常仍在，是最可靠的 fallback。
+  for (const p of findPlatformBinaries(pkgRoot)) {
+    if (isValidNativeBinary(p)) return { cmd: p, preArgs: [] };
+  }
+
+  // 优先级 3: cli-wrapper.cjs + node - v2.x 官方 fallback launcher
+  const wrapper = path.join(pkgRoot, "cli-wrapper.cjs");
+  if (fs.existsSync(wrapper))
+    return { cmd: process.execPath, preArgs: [wrapper] };
+
+  // 优先级 4: cli.js - 旧版 v1.x
   const cliJs = path.join(pkgRoot, "cli.js");
   if (fs.existsSync(cliJs)) return { cmd: process.execPath, preArgs: [cliJs] };
   // 兜底：读 shim 内容，正则提取它调用的 claude 目标（路径需含 claude）
