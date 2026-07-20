@@ -76,7 +76,7 @@ if "%NODE_OK%"=="0" (
     )
 )
 
-:: Check Claude Code
+:: Check Claude Code — npm global bin may not be in PATH, resolve via prefix
 set "CLAUDE_OK=0"
 where claude >nul 2>&1
 if not errorlevel 1 (
@@ -84,6 +84,18 @@ if not errorlevel 1 (
         if not "%%v"=="" (
             echo [OK] Claude Code: %%v
             set "CLAUDE_OK=1"
+        )
+    )
+)
+:: PATH check failed, try via npm prefix directly
+if "!CLAUDE_OK!"=="0" (
+    for /f "tokens=*" %%p in ('npm config get prefix 2^>nul') do set "NPM_PREFIX=%%p"
+    if defined NPM_PREFIX if exist "!NPM_PREFIX!\claude.cmd" (
+        for /f "tokens=*" %%v in ('"!NPM_PREFIX!\claude.cmd" --version 2^>nul') do (
+            if not "%%v"=="" (
+                echo [OK] Claude Code: %%v ^(via npm prefix^)
+                set "CLAUDE_OK=1"
+            )
         )
     )
 )
@@ -96,15 +108,19 @@ if "!CLAUDE_OK!"=="0" (
         pause
         exit /b 1
     )
-    :: Verify installation succeeded
-    for /f "tokens=*" %%v in ('claude --version 2^>nul') do (
-        if not "%%v"=="" (
-            echo [OK] Claude Code: %%v
-            set "CLAUDE_OK=1"
+    :: Verify installation — npm global bin may not be in PATH, so resolve via prefix
+    for /f "tokens=*" %%p in ('npm config get prefix') do set "NPM_PREFIX=%%p"
+    if exist "!NPM_PREFIX!\claude.cmd" (
+        for /f "tokens=*" %%v in ('"!NPM_PREFIX!\claude.cmd" --version 2^>nul') do (
+            if not "%%v"=="" (
+                echo [OK] Claude Code: %%v
+                set "CLAUDE_OK=1"
+            )
         )
     )
     if "!CLAUDE_OK!"=="0" (
         echo [ERROR] Claude Code installed but not working
+        echo [INFO] npm prefix: !NPM_PREFIX!
         pause
         exit /b 1
     )
