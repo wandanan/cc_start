@@ -76,8 +76,15 @@ function findFromNode(): string | null {
       }
     ).trim();
     if (npmPrefix) {
-      const found = findInDir(path.join(npmPrefix, "bin"));
-      if (found) return found;
+      // Windows: npm puts .cmd shims in PREFIX_DIR (not PREFIX_DIR/bin)
+      // Linux/macOS: npm puts shims in PREFIX/bin
+      const dirs = IS_WINDOWS
+        ? [npmPrefix, path.join(npmPrefix, "bin")]
+        : [path.join(npmPrefix, "bin")];
+      for (const dir of dirs) {
+        const found = findInDir(dir);
+        if (found) return found;
+      }
     }
   } catch {
     // ignore
