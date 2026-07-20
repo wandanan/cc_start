@@ -112,7 +112,11 @@ function buildSpawnTarget(
   claudeBinStr: string,
   claudeArgs: string[]
 ): { cmd: string; args: string[]; shell: boolean } {
-  const parts = claudeBinStr.split(/\s+/).filter(Boolean);
+  // 仅当路径不含空格时才按空白切分 cmd+args（npx 兜底）。含空格则整个
+  // 字符串是带空格的单一路径（如 D:\Program Files\nodejs\claude.cmd）。
+  const hasSpace = /\s/.test(claudeBinStr);
+  const isPath = hasSpace && fs.existsSync(claudeBinStr);
+  const parts = isPath ? [claudeBinStr] : claudeBinStr.split(/\s+/).filter(Boolean);
   const first = parts[0] ?? claudeBinStr;
   const preArgs = parts.slice(1); // e.g. npx 的 "-y @anthropic-ai/claude-code"
   const ext = path.extname(first).toLowerCase();

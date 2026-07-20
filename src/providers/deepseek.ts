@@ -48,18 +48,6 @@ export function applyDeepSeekPolicy(config: ModelSettings): boolean {
     }
   }
 
-  // Strip Foundry env vars (use --bare mode instead, which skips model validation)
-  for (const key of [
-    "CLAUDE_CODE_USE_FOUNDRY",
-    "ANTHROPIC_FOUNDRY_BASE_URL",
-    "ANTHROPIC_FOUNDRY_API_KEY"
-  ]) {
-    if (config.env[key]) {
-      delete config.env[key];
-      changed = true;
-    }
-  }
-
   if (!config.env.CLAUDE_CODE_EFFORT_LEVEL) {
     config.env.CLAUDE_CODE_EFFORT_LEVEL = "max";
     changed = true;
