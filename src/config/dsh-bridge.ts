@@ -46,12 +46,15 @@ export function credentialEnvFor(providerId: string): string {
 }
 
 /**
- * DeepSeek 官方 anthropic 兼容端点（实测支持 adaptive thinking：
- * `thinking: {type:"adaptive"}` + `output_config.effort`，级别 low/medium/high/max）。
- * 其他第三方端点未经验证，不声明推理级别，避免请求被拒。
+ * DeepSeek 模型是否声明推理级别。
+ * 实测支持 adaptive thinking（`thinking: {type:"adaptive"}` +
+ * `output_config.effort`，级别 low/medium/high/max）的端点：
+ * 官方 api.deepseek.com/anthropic、火山方舟 ark.cn-beijing.volces.com、
+ * 本地代理（转发官方 API）。按模型 id（含 deepseek）判断，覆盖全部渠道；
+ * 其他模型（GLM/Qwen/Kimi 等）未经验证，不声明以免请求被拒。
  */
-export function isDeepSeekAnthropicEndpoint(baseURL: string): boolean {
-  return /api\.deepseek\.com\/anthropic/.test(baseURL);
+export function supportsDeepSeekReasoning(modelId: string): boolean {
+  return stripContextSuffix(modelId).toLowerCase().includes("deepseek");
 }
 
 /** DeepSeek anthropic 端点可用的推理级别（wire 值即 effort 值）。 */
@@ -166,9 +169,9 @@ export function buildDshProvidersYaml(models: ModelRecord[]): string {
     );
     for (const modelId of group.models) {
       lines.push(`          - id: ${yamlString(modelId)}`);
-      // DeepSeek 官方端点：声明推理级别，composer 模型选择器显示
-      // 推理程度选项（其余端点未验证，不声明以免请求被拒）
-      if (isDeepSeekAnthropicEndpoint(group.baseURL)) {
+      // DeepSeek 模型（任意渠道，官方/火山方舟/代理均已实测支持）：
+      // 声明推理级别，composer 模型选择器显示推理程度选项
+      if (supportsDeepSeekReasoning(modelId)) {
         lines.push("            reasoningEfforts:");
         for (const [level, wire] of DEEPSEEK_REASONING_EFFORTS) {
           lines.push(
