@@ -45,6 +45,24 @@ export function credentialEnvFor(providerId: string): string {
   return `CC_START_KEY_${providerId.toUpperCase().replace(/-/g, "_")}`;
 }
 
+/**
+ * DeepSeek 官方 anthropic 兼容端点（实测支持 adaptive thinking：
+ * `thinking: {type:"adaptive"}` + `output_config.effort`，级别 low/medium/high/max）。
+ * 其他第三方端点未经验证，不声明推理级别，避免请求被拒。
+ */
+export function isDeepSeekAnthropicEndpoint(baseURL: string): boolean {
+  return /api\.deepseek\.com\/anthropic/.test(baseURL);
+}
+
+/** DeepSeek anthropic 端点可用的推理级别（wire 值即 effort 值）。 */
+export const DEEPSEEK_REASONING_EFFORTS: ReadonlyArray<readonly [string, string]> = [
+  ["off", "null"],
+  ["low", "low"],
+  ["medium", "medium"],
+  ["high", "high"],
+  ["max", "max"],
+];
+
 /** YAML 双引号字符串转义（js-yaml 兼容）。 */
 export function yamlString(value: string): string {
   return '"' + value.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
@@ -148,6 +166,18 @@ export function buildDshProvidersYaml(models: ModelRecord[]): string {
     );
     for (const modelId of group.models) {
       lines.push(`          - id: ${yamlString(modelId)}`);
+      // DeepSeek 官方端点：声明推理级别，composer 模型选择器显示
+      // 推理程度选项（其余端点未验证，不声明以免请求被拒）
+      if (isDeepSeekAnthropicEndpoint(group.baseURL)) {
+        lines.push("            reasoningEfforts:");
+        for (const [level, wire] of DEEPSEEK_REASONING_EFFORTS) {
+          lines.push(
+            wire === "null"
+              ? `              ${level}: null`
+              : `              ${level}: ${yamlString(wire)}`
+          );
+        }
+      }
     }
   }
   return lines.join("\n") + "\n";
