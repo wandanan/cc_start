@@ -34,9 +34,16 @@ export interface RawInputHandle {
  */
 export function openRawInput(): RawInputHandle {
   // Tear down any readline interface that is managing stdin (left over from
-  // `question()`), and clear stale listeners from a previous component.
+  // `question()`).
   closePrompt();
-  process.stdin.removeAllListeners("data");
+  // ⚠ 绝不能 removeAllListeners("data")：Node readline 会在 stdin 上安装
+  // 按键转换器（data → keypress），question() 依赖它。该转换器的恢复钩子
+  // （newListener）只在首次安装时触发一次——若在这里删掉转换器，之后
+  // question() 新建的 Interface 将永远收不到 keypress，输入直接卡死
+  // （whitelist 连续添加两次模型必现）。
+  // 我们的 onData 与 readline 转换器可以共存：没有打开的 Interface 时，
+  // 转换器 emit 的 keypress 无人监听，无任何副作用；close() 时我们只移除
+  // 自己的监听器，转换器始终保留，后续 question() 永远可用。
   if (process.stdin.isPaused()) process.stdin.resume();
 
   const wasRaw = process.stdin.isRaw;

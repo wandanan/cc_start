@@ -232,7 +232,8 @@ export function promoteSession(meta: SessionMeta): void {
 
 function resetStdin(): void {
   closePrompt();
-  process.stdin.removeAllListeners("data");
+  // 不能 removeAllListeners("data")：那会删掉 readline 的按键转换器，
+  // 导致后续 question() 永久挂起（见 raw-input.ts 的说明）。
   if (process.stdin.isPaused()) process.stdin.resume();
 }
 
