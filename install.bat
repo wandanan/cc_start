@@ -76,7 +76,7 @@ if "%NODE_OK%"=="0" (
     )
 )
 
-:: Check Claude Code — npm global bin may not be in PATH, resolve via prefix
+:: Check Claude Code - npm global bin may not be in PATH, resolve via prefix
 set "CLAUDE_OK=0"
 where claude >nul 2>&1
 if not errorlevel 1 (
@@ -108,7 +108,7 @@ if "!CLAUDE_OK!"=="0" (
         pause
         exit /b 1
     )
-    :: Verify installation — npm global bin may not be in PATH, so resolve via prefix
+    :: Verify installation - npm global bin may not be in PATH, so resolve via prefix
     for /f "tokens=*" %%p in ('npm config get prefix') do set "NPM_PREFIX=%%p"
     if exist "!NPM_PREFIX!\claude.cmd" (
         for /f "tokens=*" %%v in ('"!NPM_PREFIX!\claude.cmd" --version 2^>nul') do (
@@ -232,7 +232,7 @@ if exist "%~dp0models" (
 :: Check and fix skipWebFetchPreflight in existing configs
 echo.
 echo Checking WebFetch preflight config...
-"!PS_CMD!" -NoProfile -Command "$cfgDir=Join-Path $env:USERPROFILE '.claude\models'; if(Test-Path $cfgDir){ $c=0; ls $cfgDir\*.json -ea 0|ForEach-Object{ $t=[IO.File]::ReadAllText($_.FullName); if($t.Contains('skipWebFetchPreflight')){ Write-Host ('[OK] Already ok: '+$_.Name) }else{ $t=$t.TrimEnd() -replace '\}\s*$', ([char]44+[char]10+'  '+[char]34+'skipWebFetchPreflight'+[char]34+': true'+[char]10+'}'); [IO.File]::WriteAllText($_.FullName,$t); Write-Host ('[OK] Updated: '+$_.Name); $c++ }}; if($c -eq 0){ Write-Host '[INFO] All configs already have skipWebFetchPreflight' } } else { Write-Host '[INFO] No existing configs to check' }"
+"!PS_CMD!" -NoProfile -Command "$cfgDir=Join-Path $env:USERPROFILE '.claude\models'; if(Test-Path $cfgDir){ $c=0; ls $cfgDir\*.json -ea 0|Where-Object{ $_.Name -notlike '.*' }|ForEach-Object{ $t=[IO.File]::ReadAllText($_.FullName); if($t.Contains('skipWebFetchPreflight')){ Write-Host ('[OK] Already ok: '+$_.Name) }else{ $t=$t.TrimEnd() -replace '\}\s*$', ([char]44+[char]10+'  '+[char]34+'skipWebFetchPreflight'+[char]34+': true'+[char]10+'}'); [IO.File]::WriteAllText($_.FullName,$t); Write-Host ('[OK] Updated: '+$_.Name); $c++ }}; if($c -eq 0){ Write-Host '[INFO] All configs already have skipWebFetchPreflight' } } else { Write-Host '[INFO] No existing configs to check' }"
 
 :: Update PATH
 echo.

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     CC Start PowerShell 会话初始化脚本
 .DESCRIPTION
