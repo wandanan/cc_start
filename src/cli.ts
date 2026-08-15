@@ -20,6 +20,7 @@ import { resetCommand } from "./commands/reset";
 import { updateCommand } from "./commands/update";
 import { forkCommand } from "./commands/fork";
 import { whitelistCommand } from "./commands/whitelist";
+import { dshCommand } from "./commands/dsh";
 
 function ensureConfigDir(): void {
   const dir = getModelsDir();
@@ -64,6 +65,8 @@ async function main(argv: string[]): Promise<number> {
           await whitelistCommand([]);
           await pause();
           break;
+        case "dsh":
+          return await dshCommand([]);
         case "help":
           showHelp();
           await pause();
@@ -111,6 +114,8 @@ async function main(argv: string[]): Promise<number> {
     case "whitelist":
     case "wl":
       return await whitelistCommand(args);
+    case "dsh":
+      return await dshCommand(args);
     case "-h":
     case "--help":
     case "help":

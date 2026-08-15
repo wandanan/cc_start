@@ -41,6 +41,7 @@ type MenuAction =
   | { type: "update" }
   | { type: "fork" }
   | { type: "whitelist" }
+  | { type: "dsh" }
   | { type: "help" }
   | { type: "quit" }
   | { type: "back" }
@@ -73,7 +74,8 @@ function actionPrompt(): Promise<MenuAction> {
     console.log(`  ${GRN}b)${NC}  返回模型选择  ${GRN}a)${NC}  添加新模型`);
     console.log(`  ${GRN}e)${NC}  编辑模型配置  ${GRN}r)${NC}  删除模型`);
     console.log(`  ${GRN}u)${NC}  升级 Claude   ${GRN}f)${NC}  分叉会话`);
-    console.log(`  ${GRN}w)${NC}  1M 白名单    ${GRN}h)${NC}  查看帮助`);
+    console.log(`  ${GRN}d)${NC}  启动 dsh      ${GRN}w)${NC}  1M 白名单`);
+    console.log(`  ${GRN}h)${NC}  查看帮助${NC}`);
     console.log(`                        ${YLW}q)${NC}  退出`);
     console.log("");
     console.log(`  ${DIM}按 Esc 或 b 返回模型选择${NC}`);
@@ -111,6 +113,7 @@ function actionPrompt(): Promise<MenuAction> {
       if (ch === "u") { cleanup(); resolve({ type: "update" }); return; }
       if (ch === "f") { cleanup(); resolve({ type: "fork" }); return; }
       if (ch === "w") { cleanup(); resolve({ type: "whitelist" }); return; }
+      if (ch === "d") { cleanup(); resolve({ type: "dsh" }); return; }
       if (ch === "h") { cleanup(); resolve({ type: "help" }); return; }
       if (ch === "b") { cleanup(); resolve({ type: "back" }); return; }
     }
