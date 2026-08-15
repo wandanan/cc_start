@@ -23,4 +23,5 @@ node_modules/
 dist/
 life_cycle_process/
 .claude/
+.serena/
 

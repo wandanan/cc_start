@@ -20,7 +20,7 @@ export function showHelp(): void {
   console.log(`  ${GRN}${(cmdName + " edit [模型名]").padEnd(22)}${NC} 编辑已有模型配置`);
   console.log(`  ${GRN}${(cmdName + " remove [模型名]").padEnd(22)}${NC} 删除模型配置`);
   console.log(`  ${GRN}${(cmdName + " sync [模型名]").padEnd(22)}${NC} 同步 MCP/插件到指定模型`);
-  console.log(`  ${GRN}${(cmdName + " upgrade").padEnd(22)}${NC} 升级 DeepSeek 配置补齐扩展字段`);
+  console.log(`  ${GRN}${(cmdName + " upgrade").padEnd(22)}${NC} 为白名单模型补齐 [1m] 后缀`);
   console.log(`  ${GRN}${(cmdName + " update").padEnd(22)}${NC} 升级 Claude Code 到最新版`);
   console.log(`  ${GRN}${(cmdName + " reset").padEnd(22)}${NC} 重置所有配置`);
   console.log(`  ${GRN}${(cmdName + " -h").padEnd(22)}${NC} 显示此帮助`);

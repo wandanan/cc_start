@@ -236,24 +236,24 @@ export async function updateCommand(): Promise<number> {
     console.log(`  ${GRN}✓ 升级完成${NC}`);
   }
 
-  // Check for DeepSeek models and warn about compatibility
+  // Check for [1m] context models and warn about compatibility
   try {
     const modelsDir = path.join(
       process.env.USERPROFILE || process.env.HOME || "~",
       ".claude", "models"
     );
     if (fs.existsSync(modelsDir)) {
-      const hasDeepSeek = fs.readdirSync(modelsDir)
+      const has1mModel = fs.readdirSync(modelsDir)
         .filter((f) => f.endsWith(".json") && !f.startsWith("."))
         .some((f) => {
           try {
             const raw = fs.readFileSync(path.join(modelsDir, f), "utf-8");
-            return raw.toLowerCase().includes("deepseek");
+            return /\[[0-9]+[mM]\]/.test(raw);
           } catch { return false; }
         });
-      if (hasDeepSeek) {
+      if (has1mModel) {
         console.log("");
-        console.log(`  ${YLW}⚠ 检测到 DeepSeek 模型配置${NC}`);
+        console.log(`  ${YLW}⚠ 检测到 1M 上下文模型配置${NC}`);
         console.log(`  ${DIM}新版本可能存在兼容性问题。如遇模型不可用，请回退:${NC}`);
         console.log(`  ${DIM}npm install -g @anthropic-ai/claude-code@2.1.196${NC}`);
       }

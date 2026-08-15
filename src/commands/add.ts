@@ -8,25 +8,26 @@ import {
   loadModels,
   repairModelConfig,
 } from "../config/model-config";
-import { ensureOneMillionSuffix } from "../providers/deepseek";
+import { ensureOneMillionSuffix } from "../providers/one-million";
 import { writeJsonObject, JsonObject, isRecord } from "../config/json";
 import { question, maskApiKey, pause, confirm } from "../ui/prompts";
 import { BLU, GRN, YLW, RED, CYA, BOLD, DIM, NC } from "../ui/colors";
 import { getCmdName } from "../platform/detect";
 
-function deepSeekDetectAndFix(
+/**
+ * 统一规范化模型输入：
+ * - api.deepseek.com 裸地址自动补 /anthropic 路径（DeepSeek 官方 API 要求）
+ * - 白名单内的模型 ID 自动追加 [1m] 后缀（与提供商无关）
+ */
+function normalizeModelInput(
   baseUrl: string,
   modelId: string
-): { modelId: string; baseUrl: string; isDeepSeek: boolean } {
-  if (baseUrl.toLowerCase().includes("deepseek")) {
-    let url = baseUrl;
-    // Auto-append /anthropic for bare api.deepseek.com URLs
-    if (url.match(/api\.deepseek\.com\/?$/)) {
-      url = url.replace(/\/?$/, "/anthropic");
-    }
-    return { modelId: ensureOneMillionSuffix(modelId), baseUrl: url, isDeepSeek: true };
+): { modelId: string; baseUrl: string } {
+  let url = baseUrl;
+  if (url.match(/api\.deepseek\.com\/?$/)) {
+    url = url.replace(/\/?$/, "/anthropic");
   }
-  return { modelId, baseUrl, isDeepSeek: false };
+  return { modelId: ensureOneMillionSuffix(modelId), baseUrl: url };
 }
 
 export async function addCommand(): Promise<number> {
@@ -84,13 +85,14 @@ export async function addCommand(): Promise<number> {
       continue;
     }
 
-    // DeepSeek detection
-    const dsResult = deepSeekDetectAndFix(baseUrl, modelId);
-    modelId = dsResult.modelId;
-    const normalizedUrl = dsResult.baseUrl;
-    if (dsResult.isDeepSeek) {
+    // Normalize URL & apply 1M whitelist suffix
+    const originalModelId = modelId;
+    const norm = normalizeModelInput(baseUrl, modelId);
+    modelId = norm.modelId;
+    const normalizedUrl = norm.baseUrl;
+    if (modelId !== originalModelId) {
       console.log("");
-      console.log(`  ${CYA}🔍 检测到 DeepSeek API，已自动配置 1M 上下文窗口${NC}`);
+      console.log(`  ${CYA}🔍 模型在白名单中，已自动配置 1M 上下文窗口${NC}`);
       console.log(`  ${DIM}  主模型 ID 已更新: ${modelId}${NC}`);
     }
 

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ENV_KEYS, REQUIRED_ENV_KEYS } from "./env-keys";
 import { isRecord, JsonObject, readJsonObject, writeJsonObject } from "./json";
-import { applyDeepSeekPolicy } from "../providers/deepseek";
+import { applyOneMillionPolicy } from "../providers/one-million";
 
 export type ModelEnv = Record<string, string>;
 
@@ -93,7 +93,7 @@ function normalizeModelSettings(raw: JsonObject): { settings: ModelSettings; cha
     env
   };
 
-  if (applyDeepSeekPolicy(settings)) {
+  if (applyOneMillionPolicy(settings)) {
     changed = true;
   }
 
@@ -158,7 +158,7 @@ export function listModelFiles(modelsDir: string): string[] {
 
   return fs
     .readdirSync(modelsDir)
-    .filter((name) => name.endsWith(".json"))
+    .filter((name) => name.endsWith(".json") && !name.startsWith("."))
     .map((name) => path.join(modelsDir, name))
     .sort((a, b) => path.basename(a).localeCompare(path.basename(b)));
 }

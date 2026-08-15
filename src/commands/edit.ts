@@ -6,7 +6,7 @@ import {
   writeJsonObject,
   readJsonObject,
 } from "../config/json";
-import { ensureOneMillionSuffix } from "../providers/deepseek";
+import { ensureOneMillionSuffix } from "../providers/one-million";
 import { question, maskApiKey, confirm } from "../ui/prompts";
 import { selectModel } from "../ui/menu";
 import { BLU, GRN, YLW, RED, CYA, BOLD, DIM, NC } from "../ui/colors";
@@ -76,13 +76,11 @@ export async function editCommand(modelName?: string): Promise<number> {
   let newUrl = await question(`  Base URL [${curUrl}]: `);
   if (!newUrl) newUrl = curUrl;
 
-  // DeepSeek detection for URL change
-  if (newUrl.toLowerCase().includes("deepseek")) {
-    newModelId = ensureOneMillionSuffix(newModelId);
-    // Auto-append /anthropic for bare api.deepseek.com URLs
-    if (newUrl.match(/api\.deepseek\.com\/?$/)) {
-      newUrl = newUrl.replace(/\/?$/, "/anthropic");
-    }
+  // 白名单模型自动补 [1m] 后缀（与提供商无关）
+  newModelId = ensureOneMillionSuffix(newModelId);
+  // api.deepseek.com 裸地址自动补 /anthropic 路径
+  if (newUrl.match(/api\.deepseek\.com\/?$/)) {
+    newUrl = newUrl.replace(/\/?$/, "/anthropic");
   }
 
   console.log("");

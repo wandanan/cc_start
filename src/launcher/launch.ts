@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { ModelRecord } from "../config/model-config";
-import { isDeepSeekConfig, deepSeekExtraClaudeArgs } from "../providers/deepseek";
+import { oneMillionEnv } from "../providers/one-million";
 import { findClaudeBin } from "../platform/find-claude";
 import { createMergedSettings } from "./merge-settings";
 import { buildClaudeEnv } from "./env";
@@ -175,6 +175,8 @@ export async function launchClaude(
 
   // Build environment
   const env = buildClaudeEnv(modelConfig.env);
+  // 1M 模型：禁用未知模型窗口强制（替代 --bare，保留 hooks/skills 等完整功能）
+  Object.assign(env, oneMillionEnv(modelConfig));
 
   // Create merged settings
   const mergedSettings = createMergedSettings(modelConfig);
@@ -187,9 +189,6 @@ export async function launchClaude(
   if (mode === "skip-perms") {
     claudeArgs.push("--dangerously-skip-permissions");
   }
-
-  const extraArgs = deepSeekExtraClaudeArgs(modelConfig);
-  claudeArgs.push(...extraArgs);
 
   claudeArgs.push("--settings", mergedSettings);
   claudeArgs.push(...passThroughArgs);

@@ -4,6 +4,8 @@ import { getHomeDir } from "./paths";
 
 const WHITELIST_FILENAME = ".1m-whitelist.json";
 
+// 默认白名单：支持百万上下文的模型。任何提供商的模型，
+// 只要 ID 在此白名单内，启动时都会自动追加 [1m] 后缀。
 const DEFAULT_WHITELIST: string[] = [
   "deepseek-v4-pro",
   "deepseek-chat",
