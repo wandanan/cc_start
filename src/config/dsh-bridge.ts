@@ -47,10 +47,18 @@ export function credentialEnvFor(providerId: string): string {
 
 /**
  * DeepSeek 模型是否声明推理级别。
- * 实测支持 adaptive thinking（`thinking: {type:"adaptive"}` +
- * `output_config.effort`，级别 low/medium/high/max）的端点：
- * 官方 api.deepseek.com/anthropic、火山方舟 ark.cn-beijing.volces.com、
- * 本地代理（转发官方 API）。按模型 id（含 deepseek）判断，覆盖全部渠道；
+ *
+ * 按模型 id（含 deepseek）判断，覆盖全部渠道：官方 api.deepseek.com、
+ * 火山方舟、本地代理等——已实测这些 anthropic 兼容端点全部支持
+ * adaptive thinking（`thinking:{type:"adaptive"}` + `output_config.effort`）。
+ *
+ * 参考 models.dev/api.json：各供应商（DeepSeek 官方/硅基流动/NVIDIA 等）
+ * 的 effort 值都是 Anthropic 标准名（low/medium/high/max），无特殊 wire
+ * 格式差异，差异仅在支持集合（如官方 v4-flash 标注 low/high/max、
+ * v4-pro 标注 high/max）；本桥接统一声明完整集合（实测端点对未标注的
+ * medium 同样接受）。硅基流动等未标注 effort 的渠道未实测，若后续请求
+ * 被拒可在此按 baseURL 裁剪级别集合。
+ *
  * 其他模型（GLM/Qwen/Kimi 等）未经验证，不声明以免请求被拒。
  */
 export function supportsDeepSeekReasoning(modelId: string): boolean {
