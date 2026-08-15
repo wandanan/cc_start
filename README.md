@@ -112,6 +112,9 @@ $ cc
 | `cc remove [模型名]` | 删除模型配置 |
 | `cc ls` | 列出所有已配置模型 |
 | `cc sync [模型名]` | 同步当前 MCP/插件配置到指定模型 |
+| `cc dsh [模型名]` | 用所选模型启动 DeepSeek Harness（自动打开浏览器） |
+| `cc dsh stop` | 停止正在运行的 dsh 实例 |
+| `cc dsh --reopen` | 打开已有 dsh 实例（非交互/脚本场景） |
 | `cc reset` | 清空所有模型配置 |
 | `cc -h` | 查看帮助 |
 
@@ -127,6 +130,23 @@ $ cc
 | `b` / `空回车` | 操作菜单中返回模型选择 |
 
 > 💡 `cc` 和 `ccs` 完全等价。Linux 系统默认有 `/usr/bin/cc`（C 编译器），若需区分使用 `ccs` 即可。
+
+### DeepSeek Harness (dsh)
+
+`cc dsh` 用你已配置的模型直接启动 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)——**模型只在 cc_start 配一次，dsh 自动复用，无需二次配置**：
+
+```bash
+cc dsh              # 交互选择模型 → 启动 dsh Web UI，自动打开浏览器
+cc dsh <模型名>      # 指定模型启动
+cc dsh stop         # 停止正在运行的 dsh 实例
+cc dsh <模型名> --profile headless "任务"   # 透传 dsh 参数（如 headless 跑任务）
+```
+
+- **一套配置两处用**：启动时自动把 `~/.claude/models/*.json` 转换为 dsh provider 配置层（`$DSH_HOME/cc-start-providers.yml`），每次启动现生成，改配置即生效
+- **凭据不落盘**：每个 provider 经独立环境变量（`CC_START_KEY_*`）传递，UI 里切换任意模型都有正确 key
+- **推理级别**：DeepSeek 模型（任意渠道：官方 / 火山方舟 / 本地代理）自动声明推理强度（off / low / medium / high / max），composer 模型选择器可选
+- **退出**：前台 `Ctrl+C`；或另开终端 `cc dsh stop`（按端口找到进程树并清理）
+- 首次使用需 `npm i -g @deepseek-ai/dsh`（未安装时自动通过 npx 获取）
 
 ## 支持的模型
 
