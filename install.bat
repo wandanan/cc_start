@@ -102,7 +102,7 @@ if "!CLAUDE_OK!"=="0" (
 if "!CLAUDE_OK!"=="0" (
     echo [WARN] Claude Code not found, installing...
     echo [INFO] Using npm registry: !NPM_REGISTRY!
-    call npm install -g @anthropic-ai/claude-code@2.1.196 --registry=!NPM_REGISTRY! !NPM_NO_PROXY!
+    call npm install -g @anthropic-ai/claude-code@2.1.233 --registry=!NPM_REGISTRY! !NPM_NO_PROXY!
     if errorlevel 1 (
         echo [ERROR] Failed to install Claude Code
         pause
