@@ -46,27 +46,21 @@ export function credentialEnvFor(providerId: string): string {
 }
 
 /**
- * DeepSeek 模型是否声明推理级别。
+ * 推理级别声明：所有模型统一声明完整集合。
  *
- * 按模型 id（含 deepseek）判断，覆盖全部渠道：官方 api.deepseek.com、
- * 火山方舟、本地代理等——已实测这些 anthropic 兼容端点全部支持
- * adaptive thinking（`thinking:{type:"adaptive"}` + `output_config.effort`）。
+ * 背景：dsh 对未声明 reasoningEfforts 的模型，只要请求带推理级别
+ * （全局默认 max）就在本地直接拒绝（UNSUPPORTED_REASONING_EFFORT，
+ * UI 表现为 Connection error / 切换即失败）——所有非 DeepSeek 模型
+ * 都会踩中。因此必须为每个模型声明级别集合。
  *
- * 参考 models.dev/api.json：各供应商（DeepSeek 官方/硅基流动/NVIDIA 等）
- * 的 effort 值都是 Anthropic 标准名（low/medium/high/max），无特殊 wire
- * 格式差异，差异仅在支持集合（如官方 v4-flash 标注 low/high/max、
- * v4-pro 标注 high/max）；本桥接统一声明完整集合（实测端点对未标注的
- * medium 同样接受）。硅基流动等未标注 effort 的渠道未实测，若后续请求
- * 被拒可在此按 baseURL 裁剪级别集合。
- *
- * 其他模型（GLM/Qwen/Kimi 等）未经验证，不声明以免请求被拒。
+ * wire 格式已实测：deepseek 全渠道（官方/方舟/代理）与 kimi-k3 的
+ * anthropic 端点均接受 `thinking:{type:"adaptive",effort}`，effort 值
+ * 即 Anthropic 标准名（low/medium/high/max），无特殊格式差异。其余
+ * 国内 anthropic 兼容端点（智谱/阿里/火山等）对 thinking 参数通常
+ * 忽略或接受；即便个别端点拒绝，错误也会在 UI 明确显示（可诊断），
+ * 优于本地静默拒绝导致模型完全不可用。
  */
-export function supportsDeepSeekReasoning(modelId: string): boolean {
-  return stripContextSuffix(modelId).toLowerCase().includes("deepseek");
-}
-
-/** DeepSeek anthropic 端点可用的推理级别（wire 值即 effort 值）。 */
-export const DEEPSEEK_REASONING_EFFORTS: ReadonlyArray<readonly [string, string]> = [
+export const REASONING_EFFORTS: ReadonlyArray<readonly [string, string]> = [
   ["off", "null"],
   ["low", "low"],
   ["medium", "medium"],
@@ -177,17 +171,15 @@ export function buildDshProvidersYaml(models: ModelRecord[]): string {
     );
     for (const modelId of group.models) {
       lines.push(`          - id: ${yamlString(modelId)}`);
-      // DeepSeek 模型（任意渠道，官方/火山方舟/代理均已实测支持）：
       // 声明推理级别，composer 模型选择器显示推理程度选项
-      if (supportsDeepSeekReasoning(modelId)) {
-        lines.push("            reasoningEfforts:");
-        for (const [level, wire] of DEEPSEEK_REASONING_EFFORTS) {
-          lines.push(
-            wire === "null"
-              ? `              ${level}: null`
-              : `              ${level}: ${yamlString(wire)}`
-          );
-        }
+      // （见 REASONING_EFFORTS 注释：不声明会被 dsh 本地拒绝）
+      lines.push("            reasoningEfforts:");
+      for (const [level, wire] of REASONING_EFFORTS) {
+        lines.push(
+          wire === "null"
+            ? `              ${level}: null`
+            : `              ${level}: ${yamlString(wire)}`
+        );
       }
     }
   }
