@@ -214,6 +214,28 @@ export function syncDefaultModelSetting(model: ModelRecord): void {
   }
 }
 
+/**
+ * 所选模型的 baseURL 若是 localhost/127.0.0.1（本地代理）且端口不可达，
+ * 提示用户代理未运行——否则 dsh 会话初始化必现 Connection error。
+ */
+async function warnIfLocalEndpointDown(model: ModelRecord): Promise<void> {
+  const url = model.settings.env.ANTHROPIC_BASE_URL ?? "";
+  const m = url.match(/^https?:\/\/([^:/]+)(?::(\d+))?/);
+  if (!m) return;
+  const host = m[1];
+  const port = m[2] ? Number(m[2]) : undefined;
+  if (host !== "localhost" && host !== "127.0.0.1") return;
+  if (port === undefined) return;
+  if (!(await isPortInUse(port))) {
+    console.log("");
+    console.log(
+      `${YLW}⚠  所选模型的本地代理不可达: ${BOLD}${url}${NC}`
+    );
+    console.log(`  ${DIM}请先启动代理服务，否则 dsh 会话初始化将报 Connection error${NC}`);
+    console.log("");
+  }
+}
+
 /** 显示 dsh 启动信息。 */
 function showDshLaunchInfo(model: ModelRecord, patchPath: string, dshBinStr: string): void {
   const env = model.settings.env;
@@ -383,6 +405,10 @@ export async function dshCommand(args: string[]): Promise<number> {
 
   // 把所选模型同步为 dsh 默认 Agent 模型（UI 打开即用该模型）
   syncDefaultModelSetting(model);
+
+  // 本地端点（localhost 代理）不可达时提前警告：会话初始化会直接
+  // Connection error，且 UI 提示无法定位是代理没跑
+  await warnIfLocalEndpointDown(model);
 
   showDshLaunchInfo(model, patchPath, launcherStr);
 
