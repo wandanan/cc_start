@@ -43,9 +43,18 @@ export function upgradeCommand(): number {
 
     const settings = repairResult.record.settings;
 
-    // Apply 1M whitelist policy (writes to file)
-    const changed = applyOneMillionPolicy(settings);
-    if (changed) {
+    // repairModelConfig(write:false) 已在内存中应用了 1M 白名单策略
+    // （normalizeModelSettings → applyOneMillionPolicy），此处再次调用
+    // 只会得到"无变化"。因此直接比较内存 env 与磁盘 env，有差异才写回。
+    applyOneMillionPolicy(settings);
+    let onDiskEnv = "";
+    try {
+      const raw = readJsonObject(file);
+      onDiskEnv = JSON.stringify(raw.env ?? {});
+    } catch {
+      // 读取失败按"有差异"处理，交给下方写回
+    }
+    if (JSON.stringify(settings.env) !== onDiskEnv) {
       writeJsonObject(file, settings as unknown as Record<string, unknown>);
       upgraded++;
       console.log(`  ${GRN}✓${NC} ${name} → 已补齐 [1m] 后缀`);
