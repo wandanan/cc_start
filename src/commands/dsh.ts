@@ -4,7 +4,13 @@ import net from "node:net";
 import { spawn, execFileSync } from "node:child_process";
 import { getHomeDir, getModelsDir } from "../config/paths";
 import { loadModels, ModelRecord } from "../config/model-config";
-import { buildDshProvidersYaml, buildCredentialEnv } from "../config/dsh-bridge";
+import {
+  buildDshProvidersYaml,
+  buildCredentialEnv,
+  slugifyProviderId,
+  stripContextSuffix,
+  yamlString,
+} from "../config/dsh-bridge";
 import { buildClaudeEnv } from "../launcher/env";
 import { selectModel } from "../ui/menu";
 import { confirm } from "../ui/prompts";
@@ -151,6 +157,61 @@ function openBrowser(url: string): void {
     spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref();
   }
   console.log(`  ${GRN}✓${NC} 已在浏览器打开: ${BOLD}${url}${NC}`);
+}
+
+/**
+ * 把所选模型同步为 dsh 的默认 Agent 模型（~/.dsh/settings.yaml 的
+ * agent-default-model 段）。
+ *
+ * 背景：dsh 的 UI 默认模型由 settings.yaml 持久化（上次使用），与 cc 的
+ * 启动参数无关。cc 选择模型启动 dsh 后，UI 仍显示旧的默认模型。
+ * dsh 的 settings 层优先级高于 composition 层（patch 注入无效），
+ * 所以这里直接写 settings.yaml —— 与 dsh UI 中"设为默认"（saveSelection）
+ * 的行为一致。reasoningEffort 保留原值，未设置时默认 high。
+ */
+export function syncDefaultModelSetting(model: ModelRecord): void {
+  const env = model.settings.env;
+  const providerId = slugifyProviderId(model.alias);
+  const modelId = stripContextSuffix(env.ANTHROPIC_MODEL ?? "");
+  if (!providerId || !modelId) return;
+
+  const yamlPath = path.join(getDshHome(), "settings.yaml");
+  let effort = "high";
+
+  try {
+    if (fs.existsSync(yamlPath)) {
+      const raw = fs.readFileSync(yamlPath, "utf8");
+      const sectionRe = /(^|\n)agent-default-model:(\n(?:[ \t]+.*\n?)*)/;
+      const effortRe = sectionRe.exec(raw)?.[2]?.match(/reasoningEffort:\s*(\S+)/);
+      if (effortRe) effort = effortRe[1];
+      const section =
+        `agent-default-model:\n` +
+        `  provider: ${yamlString(providerId)}\n` +
+        `  model: ${yamlString(modelId)}\n` +
+        `  reasoningEffort: ${effort}\n`;
+      const updated = sectionRe.test(raw)
+        ? raw.replace(sectionRe, `$1${section}`)
+        : raw.replace(/\n?$/, `\n${section}\n`);
+      if (updated !== raw) {
+        fs.writeFileSync(yamlPath, updated, "utf8");
+      }
+      return;
+    }
+  } catch {
+    // 读/改失败则回退到整文件重建（下面 try 兜底）
+  }
+
+  // 文件不存在或处理失败：创建最小配置
+  try {
+    fs.mkdirSync(path.dirname(yamlPath), { recursive: true });
+    fs.writeFileSync(
+      yamlPath,
+      `agent-default-model:\n  provider: ${yamlString(providerId)}\n  model: ${yamlString(modelId)}\n  reasoningEffort: ${effort}\n`,
+      "utf8"
+    );
+  } catch {
+    // settings 写失败不阻断启动
+  }
 }
 
 /** 显示 dsh 启动信息。 */
@@ -319,6 +380,9 @@ export async function dshCommand(args: string[]): Promise<number> {
   } else {
     dshArgs.push("--patch", patchPath, ...rest);
   }
+
+  // 把所选模型同步为 dsh 默认 Agent 模型（UI 打开即用该模型）
+  syncDefaultModelSetting(model);
 
   showDshLaunchInfo(model, patchPath, launcherStr);
 
