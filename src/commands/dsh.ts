@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import net from "node:net";
-import { spawn, execFileSync } from "node:child_process";
+import { spawn, execFileSync, execSync } from "node:child_process";
 import { getHomeDir, getModelsDir } from "../config/paths";
 import { loadModels, ModelRecord } from "../config/model-config";
 import {
@@ -108,7 +108,7 @@ function killProcessTree(pid: number): void {
   }
 }
 
-/** 在 PATH 中查找 dsh 可执行文件（npm 全局安装位置）。 */
+/** 在 PATH 或 npm 全局目录中查找 dsh 可执行文件。 */
 function findDshBin(): string | null {
   const names =
     process.platform === "win32" ? ["dsh.cmd", "dsh.exe", "dsh"] : ["dsh"];
@@ -122,6 +122,28 @@ function findDshBin(): string | null {
         // keep looking
       }
     }
+  }
+  // npm 全局目录回退：PATH 可能不含 npm prefix（无需用户改 PATH）
+  try {
+    const prefix = execSync("npm config get prefix", {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+    if (prefix) {
+      for (const name of names) {
+        const candidate = path.join(
+          prefix,
+          process.platform === "win32" ? name : path.join("bin", name)
+        );
+        try {
+          if (fs.statSync(candidate).isFile()) return candidate;
+        } catch {
+          // keep looking
+        }
+      }
+    }
+  } catch {
+    // npm 不可用
   }
   return null;
 }
@@ -354,8 +376,30 @@ export async function dshCommand(args: string[]): Promise<number> {
     ...buildCredentialEnv(models),
   };
 
-  // 启动命令：优先 PATH 中的 dsh，缺失时用 npx 自动获取
-  const dshBin = findDshBin();
+  // 启动命令：优先 PATH/npm 全局中的 dsh；缺失时自动全局安装一次
+  //（避免每次启动都走 npx 重新解析/下载，且 npx 首启慢会触发服务地址超时）
+  let dshBin = findDshBin();
+  if (!dshBin) {
+    console.log("");
+    console.log(
+      `  ${DIM}未找到 dsh，自动安装 @deepseek-ai/dsh（仅首次需要网络）...${NC}`
+    );
+    try {
+      execSync("npm install -g @deepseek-ai/dsh", { stdio: "inherit" });
+      dshBin = findDshBin();
+      if (dshBin) {
+        console.log(`  ${GRN}✓${NC} dsh 已安装: ${dshBin}`);
+      } else {
+        console.log(
+          `  ${YLW}安装完成但未找到可执行文件，回退 npx 启动${NC}`
+        );
+      }
+    } catch {
+      console.log(
+        `  ${YLW}自动安装失败，回退 npx 启动（需要网络）${NC}`
+      );
+    }
+  }
   const cmdName = getCmdName();
   const launcherStr = dshBin ?? "npx --yes @deepseek-ai/dsh";
   const baseArgs = dshBin ? [] : ["--yes", "@deepseek-ai/dsh"];
@@ -414,9 +458,9 @@ export async function dshCommand(args: string[]): Promise<number> {
 
   if (!dshBin) {
     console.log(
-      `${DIM}  未在 PATH 中找到 dsh，将通过 npx 获取 @deepseek-ai/dsh（需网络）${NC}`
+      `${DIM}  自动安装失败，本次通过 npx 启动（需要网络）${NC}`
     );
-    console.log(`${DIM}  建议: npm i -g @deepseek-ai/dsh 后可离线启动${NC}`);
+    console.log(`${DIM}  可手动执行: npm i -g @deepseek-ai/dsh 后离线启动${NC}`);
     console.log("");
   }
 
