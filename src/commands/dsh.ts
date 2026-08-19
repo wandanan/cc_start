@@ -305,6 +305,77 @@ async function warnIfLocalEndpointDown(model: ModelRecord): Promise<void> {
   }
 }
 
+interface DshLaunchContext {
+  patchPath: string;
+  env: NodeJS.ProcessEnv;
+}
+
+/** 生成 dsh provider 配置层并构建注入环境（模型 env + 各 provider 凭据 env）。 */
+function buildLaunchContext(
+  models: ModelRecord[],
+  model: ModelRecord
+): DshLaunchContext | null {
+  const yaml = buildDshProvidersYaml(models);
+  if (!yaml) {
+    console.log(`${RED}✗ 无法从模型配置生成 dsh provider 配置${NC}`);
+    return null;
+  }
+  const patchPath = getPatchPath();
+  fs.mkdirSync(path.dirname(patchPath), { recursive: true });
+  fs.writeFileSync(patchPath, yaml, "utf8");
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    ...buildClaudeEnv(model.settings.env),
+    ...buildCredentialEnv(models),
+  };
+  return { patchPath, env };
+}
+
+interface DshLauncher {
+  /** 可执行文件路径；null 表示走 npx。 */
+  bin: string | null;
+  baseArgs: string[];
+  info: string;
+}
+
+/** 解析 dsh 启动器：优先 PATH/npm 全局，缺失则自动全局安装一次。 */
+function resolveLauncher(): DshLauncher {
+  let dshBin = findDshBin();
+  if (!dshBin) {
+    console.log("");
+    console.log(
+      `  ${DIM}未找到 dsh，自动安装 @deepseek-ai/dsh（仅首次需要网络）...${NC}`
+    );
+    // 系统级 npm prefix（如 /usr）不可写会报 EACCES：自动改到用户可写目录
+    const targetPrefix = pickWritableNpmPrefix();
+    try {
+      execSync("npm install -g @deepseek-ai/dsh", {
+        stdio: "inherit",
+        env: { ...process.env, npm_config_prefix: targetPrefix },
+      });
+      dshBin = findDshBinInPrefix(targetPrefix) ?? findDshBin();
+      if (dshBin) {
+        console.log(`  ${GRN}✓${NC} dsh 已安装: ${dshBin}`);
+      } else {
+        console.log(
+          `  ${YLW}安装完成但未找到可执行文件，回退 npx 启动${NC}`
+        );
+      }
+    } catch {
+      console.log(
+        `  ${YLW}自动安装失败，回退 npx 启动（需要网络）${NC}`
+      );
+    }
+  }
+  return dshBin
+    ? { bin: dshBin, baseArgs: [], info: dshBin }
+    : {
+        bin: null,
+        baseArgs: ["--yes", "@deepseek-ai/dsh"],
+        info: "npx --yes @deepseek-ai/dsh",
+      };
+}
+
 /** 显示 dsh 启动信息。 */
 function showDshLaunchInfo(model: ModelRecord, patchPath: string, dshBinStr: string): void {
   const env = model.settings.env;
@@ -354,6 +425,114 @@ export async function stopDsh(): Promise<number> {
   return 0;
 }
 
+/** 从 ~/.dsh/settings.yaml 的 agent-default-model.provider 反查 cc 模型别名。 */
+function readDefaultModelAlias(models: ModelRecord[]): string | null {
+  try {
+    const raw = fs.readFileSync(path.join(getDshHome(), "settings.yaml"), "utf8");
+    const m = raw.match(
+      /agent-default-model:\n(?:[ \t]+.*\n?)*?\s+provider:\s*["']?([^"'\s]+)/
+    );
+    if (!m) return null;
+    const provider = m[1];
+    return (
+      models.find((mod) => slugifyProviderId(mod.alias) === provider)?.alias ??
+      null
+    );
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `cc dsh serve [模型] [dsh web 参数...]`：以常驻服务方式启动 dsh web，
+ * 供 systemd 等进程管理器托管。非交互：不选模型、不弹浏览器、不做端口
+ * 占用询问；前台运行，stdout 输出日志与服务地址。
+ *
+ * 模型缺省用 settings.yaml 的默认 Agent 模型；附加参数（--host、--port、
+ * --trusted-host 等）原样透传给 dsh web（始终带 --no-open）。
+ *
+ * 注意：dsh web 的 CLI 会拒绝 `--host 0.0.0.0`（安全限制）。要监听
+ * 0.0.0.0 只能在配置层设置 `~/.dsh/profiles/web/cordis.patch.yml` 的
+ * webserver.host，本命令的 --host 保持 127.0.0.1 占位即可。
+ */
+async function serveCommand(args: string[]): Promise<number> {
+  const modelsDir = getModelsDir();
+  const { models } = loadModels(modelsDir);
+  if (models.length === 0) {
+    console.log("");
+    console.log(
+      `${YLW}⚠  没有已配置的模型，请先使用 ${getCmdName()} add 添加${NC}`
+    );
+    return 1;
+  }
+
+  let model: ModelRecord;
+  let rest: string[];
+  const argModel = args[0] ? models.find((m) => m.alias === args[0]) : undefined;
+  if (argModel) {
+    model = argModel;
+    rest = args.slice(1);
+  } else {
+    const alias = readDefaultModelAlias(models);
+    const found = alias ? models.find((m) => m.alias === alias) : undefined;
+    if (!found) {
+      console.log("");
+      console.log(`${YLW}⚠  未指定模型且 settings.yaml 无匹配的默认模型${NC}`);
+      console.log(
+        `  ${DIM}用法: ${getCmdName()} dsh serve <模型名> [--host H] [--port P] [--trusted-host A]${NC}`
+      );
+      return 1;
+    }
+    model = found;
+    rest = args;
+  }
+
+  const ctx = buildLaunchContext(models, model);
+  if (!ctx) return 1;
+
+  // 把所选模型同步为 dsh 默认 Agent 模型（与交互模式一致：最近使用的成为默认）
+  syncDefaultModelSetting(model);
+
+  // 本地端点（localhost 代理）不可达时提前警告
+  await warnIfLocalEndpointDown(model);
+
+  const { bin, baseArgs, info: launcherStr } = resolveLauncher();
+  const dshArgs = [
+    ...baseArgs,
+    "web",
+    "--patch",
+    ctx.patchPath,
+    "--no-open",
+    ...rest,
+  ];
+
+  showDshLaunchInfo(model, ctx.patchPath, launcherStr);
+  console.log(`  ${DIM}  常驻服务: systemctl --user stop cc-start-dsh 停止${NC}`);
+  console.log("");
+
+  const first = bin ?? (process.platform === "win32" ? "npx.cmd" : "npx");
+  const ext = path.extname(first).toLowerCase();
+  const needsShell =
+    process.platform === "win32" && (ext === ".cmd" || ext === ".bat");
+
+  return new Promise<number>((resolve) => {
+    let child;
+    if (needsShell) {
+      const cmdLine = [first, ...dshArgs].map(quoteShellArg).join(" ");
+      child = spawn(cmdLine, { env: ctx.env, stdio: "inherit", shell: true });
+    } else {
+      child = spawn(first, dshArgs, { env: ctx.env, stdio: "inherit", shell: false });
+    }
+    child.on("error", (err) => {
+      console.error(`${RED}✗ 启动 dsh 失败: ${err.message}${NC}`);
+      resolve(1);
+    });
+    child.on("exit", (code) => {
+      resolve(code ?? 0);
+    });
+  });
+}
+
 /**
  * `cc dsh`：把 cc_start 的模型配置转换为 dsh 的 provider 配置层，
  * 然后用所选模型的环境变量启动 dsh（默认 web 界面，自动打开浏览器）。
@@ -363,11 +542,15 @@ export async function stopDsh(): Promise<number> {
  *   cc dsh <模型名>        用指定模型启动 dsh web
  *   cc dsh <模型名> headless "任务"   透传 dsh 参数/子命令
  *   cc dsh stop            停止正在运行的 dsh 实例
+ *   cc dsh serve [模型]    常驻服务方式启动（供 systemd 托管，非交互）
  *   cc dsh                 退出：Ctrl+C 或 cc dsh stop
  */
 export async function dshCommand(args: string[]): Promise<number> {
   if (args[0] === "stop") {
     return stopDsh();
+  }
+  if (args[0] === "serve") {
+    return serveCommand(args.slice(1));
   }
 
   // --reopen：非交互环境（脚本/后台）下显式复用已有实例；不传给 dsh
@@ -405,56 +588,16 @@ export async function dshCommand(args: string[]): Promise<number> {
     rest = args;
   }
 
-  // 每次启动现生成配置层：模型配置永远是最新的，无需手动同步
-  const yaml = buildDshProvidersYaml(models);
-  if (!yaml) {
-    console.log(`${RED}✗ 无法从模型配置生成 dsh provider 配置${NC}`);
-    return 1;
-  }
-  const patchPath = getPatchPath();
-  fs.mkdirSync(path.dirname(patchPath), { recursive: true });
-  fs.writeFileSync(patchPath, yaml, "utf8");
-
-  // 环境：模型 env 注入；每个 provider 的凭据经各自独立的 apiKeyEnv
-  // 变量导出（buildCredentialEnv），这样 UI 里切换任意模型都有正确 key
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    ...buildClaudeEnv(model.settings.env),
-    ...buildCredentialEnv(models),
-  };
+  // 每次启动现生成配置层 + 构建环境：模型配置永远是最新的，无需手动同步
+  const ctx = buildLaunchContext(models, model);
+  if (!ctx) return 1;
+  const patchPath = ctx.patchPath;
+  const env = ctx.env;
 
   // 启动命令：优先 PATH/npm 全局中的 dsh；缺失时自动全局安装一次
   //（避免每次启动都走 npx 重新解析/下载，且 npx 首启慢会触发服务地址超时）
-  let dshBin = findDshBin();
-  if (!dshBin) {
-    console.log("");
-    console.log(
-      `  ${DIM}未找到 dsh，自动安装 @deepseek-ai/dsh（仅首次需要网络）...${NC}`
-    );
-    // 系统级 npm prefix（如 /usr）不可写会报 EACCES：自动改到用户可写目录
-    const targetPrefix = pickWritableNpmPrefix();
-    try {
-      execSync("npm install -g @deepseek-ai/dsh", {
-        stdio: "inherit",
-        env: { ...process.env, npm_config_prefix: targetPrefix },
-      });
-      dshBin = findDshBinInPrefix(targetPrefix) ?? findDshBin();
-      if (dshBin) {
-        console.log(`  ${GRN}✓${NC} dsh 已安装: ${dshBin}`);
-      } else {
-        console.log(
-          `  ${YLW}安装完成但未找到可执行文件，回退 npx 启动${NC}`
-        );
-      }
-    } catch {
-      console.log(
-        `  ${YLW}自动安装失败，回退 npx 启动（需要网络）${NC}`
-      );
-    }
-  }
+  const { bin: dshBin, baseArgs, info: launcherStr } = resolveLauncher();
   const cmdName = getCmdName();
-  const launcherStr = dshBin ?? "npx --yes @deepseek-ai/dsh";
-  const baseArgs = dshBin ? [] : ["--yes", "@deepseek-ai/dsh"];
   // 参数顺序：`web` 是 dsh 的子命令，自带 --patch；其他 profile（如
   // --profile headless）的 --patch 是 dsh 根级 flag，须放在前面。
   const isWeb = rest.length === 0 || rest[0] === "web";
