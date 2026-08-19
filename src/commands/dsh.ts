@@ -108,7 +108,64 @@ function killProcessTree(pid: number): void {
   }
 }
 
-/** 在 PATH 或 npm 全局目录中查找 dsh 可执行文件。 */
+/** npm 全局安装目录（`npm config get prefix`），失败返回空串。 */
+function getNpmPrefix(): string {
+  try {
+    return execSync("npm config get prefix", {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+  } catch {
+    return "";
+  }
+}
+
+/** 目录是否可写：存在则检查权限，不存在则尝试创建。 */
+function isDirWritable(dir: string): boolean {
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.accessSync(dir, fs.constants.W_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 在某个 npm prefix 的 bin 目录下查找 dsh 可执行文件。 */
+function findDshBinInPrefix(prefix: string): string | null {
+  const names =
+    process.platform === "win32" ? ["dsh.cmd", "dsh.exe", "dsh"] : ["dsh"];
+  const binDir = path.join(prefix, process.platform === "win32" ? "" : "bin");
+  for (const name of names) {
+    const candidate = path.join(binDir, name);
+    try {
+      if (fs.statSync(candidate).isFile()) return candidate;
+    } catch {
+      // keep looking
+    }
+  }
+  return null;
+}
+
+/**
+ * 挑选一个可写的 npm 全局安装目录，用于 `npm i -g` 的权限兜底。
+ * 优先 npm 现有 prefix；不可写（如系统级 /usr，EACCES）则回退用户级目录，
+ * ~/.local 的 bin 通常已在 PATH 中，装完即可直接使用。
+ */
+function pickWritableNpmPrefix(): string {
+  const home = getHomeDir();
+  const candidates = [
+    getNpmPrefix(),
+    path.join(home, ".local"),
+    path.join(home, ".npm-global"),
+  ];
+  for (const dir of candidates) {
+    if (dir && isDirWritable(dir)) return dir;
+  }
+  return path.join(home, ".npm-global");
+}
+
+/** 在 PATH、npm 全局目录或用户级回退目录中查找 dsh 可执行文件。 */
 function findDshBin(): string | null {
   const names =
     process.platform === "win32" ? ["dsh.cmd", "dsh.exe", "dsh"] : ["dsh"];
@@ -124,26 +181,16 @@ function findDshBin(): string | null {
     }
   }
   // npm 全局目录回退：PATH 可能不含 npm prefix（无需用户改 PATH）
-  try {
-    const prefix = execSync("npm config get prefix", {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
-    if (prefix) {
-      for (const name of names) {
-        const candidate = path.join(
-          prefix,
-          process.platform === "win32" ? name : path.join("bin", name)
-        );
-        try {
-          if (fs.statSync(candidate).isFile()) return candidate;
-        } catch {
-          // keep looking
-        }
-      }
-    }
-  } catch {
-    // npm 不可用
+  const npmPrefix = getNpmPrefix();
+  if (npmPrefix) {
+    const found = findDshBinInPrefix(npmPrefix);
+    if (found) return found;
+  }
+  // 用户级回退目录：自动安装曾写入过这些位置
+  const home = getHomeDir();
+  for (const dir of [path.join(home, ".local"), path.join(home, ".npm-global")]) {
+    const found = findDshBinInPrefix(dir);
+    if (found) return found;
   }
   return null;
 }
@@ -384,9 +431,14 @@ export async function dshCommand(args: string[]): Promise<number> {
     console.log(
       `  ${DIM}未找到 dsh，自动安装 @deepseek-ai/dsh（仅首次需要网络）...${NC}`
     );
+    // 系统级 npm prefix（如 /usr）不可写会报 EACCES：自动改到用户可写目录
+    const targetPrefix = pickWritableNpmPrefix();
     try {
-      execSync("npm install -g @deepseek-ai/dsh", { stdio: "inherit" });
-      dshBin = findDshBin();
+      execSync("npm install -g @deepseek-ai/dsh", {
+        stdio: "inherit",
+        env: { ...process.env, npm_config_prefix: targetPrefix },
+      });
+      dshBin = findDshBinInPrefix(targetPrefix) ?? findDshBin();
       if (dshBin) {
         console.log(`  ${GRN}✓${NC} dsh 已安装: ${dshBin}`);
       } else {
@@ -460,7 +512,12 @@ export async function dshCommand(args: string[]): Promise<number> {
     console.log(
       `${DIM}  自动安装失败，本次通过 npx 启动（需要网络）${NC}`
     );
-    console.log(`${DIM}  可手动执行: npm i -g @deepseek-ai/dsh 后离线启动${NC}`);
+    console.log(
+      `${DIM}  可手动执行: npm i -g @deepseek-ai/dsh 后离线启动${NC}`
+    );
+    console.log(
+      `${DIM}  （EACCES 权限报错时加 --prefix ~/.local，如 npm i -g --prefix ~/.local @deepseek-ai/dsh）${NC}`
+    );
     console.log("");
   }
 
