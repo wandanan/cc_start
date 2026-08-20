@@ -63,9 +63,9 @@ export function searchSelect(
       let lastGroup = "\x00"; // sentinel — never matches a real group
       for (let i = 0; i < filtered.length; i++) {
         const group = filtered[i].group || "";
-        if (group && group !== lastGroup) {
-          result.push({ type: "header", group });
+        if (group !== lastGroup) {
           lastGroup = group;
+          if (group) result.push({ type: "header", group });
         }
         result.push({ type: "item", idx: i });
       }

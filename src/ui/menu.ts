@@ -14,6 +14,7 @@ function detectVendor(modelId: string): string {
   if (lower.includes("claude")) return "Claude";
   if (lower.includes("gemini")) return "Gemini";
   if (lower.includes("qwen") || lower.includes("qewn")) return "Qwen";
+  if (lower.includes("kimi")) return "Kimi";
   if (lower.includes("doubao")) return "豆包";
   if (lower.includes("glm")) return "GLM";
   if (lower.includes("gpt")) return "GPT";
