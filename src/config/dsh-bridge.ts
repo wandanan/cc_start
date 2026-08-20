@@ -90,8 +90,10 @@ export function groupModelsByEndpoint(models: ModelRecord[]): DshProviderGroup[]
       continue; // REQUIRED_ENV_KEYS 已保证，防御性跳过
     }
 
-    // 按端点分组：同 baseURL 的模型共享一个 provider（共享凭据）
-    const key = baseURL;
+    // 按端点 + 凭据分组：同 baseURL 但不同 key（如官方 DeepSeek 的多个账号、
+    // 或 lq 独立账号 vs 主账号）必须是独立 provider，否则 key 会被覆盖丢失，
+    // 切到该模型时拿到别人的 key → 402/无余额。仅同端点且同 key 才合并 models。
+    const key = baseURL + "\n" + (env.ANTHROPIC_AUTH_TOKEN || "");
     let group = byKey.get(key);
     if (!group) {
       // provider id 需唯一（避免两个 alias 生成相同 slug 导致凭据变量冲突）
