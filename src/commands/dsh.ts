@@ -7,6 +7,7 @@ import { loadModels, ModelRecord } from "../config/model-config";
 import {
   buildDshProvidersYaml,
   buildCredentialEnv,
+  groupModelsByEndpoint,
   slugifyProviderId,
   stripContextSuffix,
   yamlString,
@@ -238,9 +239,18 @@ function openBrowser(url: string): void {
  * 所以这里直接写 settings.yaml —— 与 dsh UI 中"设为默认"（saveSelection）
  * 的行为一致。reasoningEffort 保留原值，未设置时默认 high。
  */
-export function syncDefaultModelSetting(model: ModelRecord): void {
+export function syncDefaultModelSetting(
+  model: ModelRecord,
+  models: ModelRecord[]
+): void {
   const env = model.settings.env;
-  const providerId = slugifyProviderId(model.alias);
+  // provider id 必须是 dsh providers 组合树里实际的分组 id（buildDshProvidersYaml 按端点合并，
+  // 分组 id 可能 ≠ 别名 slug，例如多个 ARK 模型合并成 ark-deepseek-v4-flash；写错则 agent 找不到
+  // provider，模型调用静默失败、不回话）
+  const group = groupModelsByEndpoint(models).find((g) =>
+    g.aliases.includes(model.alias)
+  );
+  const providerId = (group && group.id) || slugifyProviderId(model.alias);
   const modelId = stripContextSuffix(env.ANTHROPIC_MODEL ?? "");
   if (!providerId || !modelId) return;
 
@@ -491,7 +501,7 @@ async function serveCommand(args: string[]): Promise<number> {
   if (!ctx) return 1;
 
   // 把所选模型同步为 dsh 默认 Agent 模型（与交互模式一致：最近使用的成为默认）
-  syncDefaultModelSetting(model);
+  syncDefaultModelSetting(model, models);
 
   // 本地端点（localhost 代理）不可达时提前警告
   await warnIfLocalEndpointDown(model);
@@ -643,7 +653,7 @@ export async function dshCommand(args: string[]): Promise<number> {
   }
 
   // 把所选模型同步为 dsh 默认 Agent 模型（UI 打开即用该模型）
-  syncDefaultModelSetting(model);
+  syncDefaultModelSetting(model, models);
 
   // 本地端点（localhost 代理）不可达时提前警告：会话初始化会直接
   // Connection error，且 UI 提示无法定位是代理没跑
